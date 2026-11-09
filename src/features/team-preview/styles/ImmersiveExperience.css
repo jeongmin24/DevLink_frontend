@@ -15,7 +15,7 @@
   overflow-x: clip;
   color: var(--color-ink, #1f2c39);
   background: var(--color-workspace, #f8fafc);
-  font-family: 'Pretendard', 'Inter', 'Segoe UI', 'Malgun Gothic', sans-serif;
+  font-family: var(--font-sans);
 }
 .itp-journey { position: relative; z-index: 0; height: 200svh; background: #080e16; }
 .itp-stage-sticky { position: sticky; top: 0; height: 100svh; overflow: hidden; background: #080e16; }
@@ -78,7 +78,7 @@
   background: linear-gradient(145deg, #d5edbe13, #b6d3b207);
   box-shadow: inset 0 1px 0 #ffffff0a;
   backdrop-filter: blur(16px);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.35;
   font-weight: 500;
   white-space: nowrap;
@@ -90,31 +90,14 @@
 .itp-overview-button > svg { transform: rotate(180deg); }
 .itp-dashboard-jump > svg { transform: rotate(90deg); }
 .itp-overview-button:focus-visible, .itp-dashboard-jump:focus-visible, .itp-scroll-prompt:focus-visible { outline: 2px solid #d0f39c; outline-offset: 5px; }
-.itp-scroll-prompt {
+.space-navigation-button.itp-scroll-prompt {
   position: absolute;
   z-index: 5;
   left: 50%;
   bottom: 148px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
   width: max-content;
-  min-height: 34px;
-  padding: 6px 10px;
-  border: 0;
-  border-radius: 9px;
-  color: #c0d0b6;
-  background: #10201a47;
-  backdrop-filter: blur(12px);
-  font-size: 14px;
-  line-height: 1.4;
-  letter-spacing: -.2px;
   transform: translateX(-50%);
-  transition: color .2s, background .2s;
 }
-.itp-scroll-prompt > svg { width: 15px; height: 15px; transform: rotate(90deg); }
-.itp-scroll-prompt:hover { color: #efffdb; background: #a6ce7d16; }
 .itp-experience > .itp-invite-dialog { color-scheme: dark; }
 .itp-experience > .itp-invite-dialog button:focus-visible, .itp-experience > .itp-invite-dialog input:focus-visible { outline: 2px solid var(--itp-lime); outline-offset: 5px; }
 .itp-fallback-person { position: relative; display: block; width: 62px; height: 60px; flex-shrink: 0; }
@@ -132,7 +115,7 @@
 .itp-fallback-companion.is-online > i { background: #477956; }
 @media (max-width: 1200px) {
   .itp-overview-button, .itp-dashboard-jump { min-height: 39px; padding: 8px 11px; }
-  .itp-scroll-prompt { bottom: 143px; }
+  .space-navigation-button.itp-scroll-prompt { bottom: 143px; }
 }
 @media (max-width: 900px) {
   .itp-stage-sticky .itp-header-actions { gap: 9px; }
@@ -158,10 +141,9 @@
   .itp-stage-sticky .itp-header-actions .itp-icon-button { width: 36px; height: 36px; }
   .itp-stage-sticky .is-focused .itp-brand-word { display: none; }
   .itp-stage-sticky .is-focused .itp-header-actions { max-width: calc(100% - 48px); flex-wrap: nowrap; }
-  .itp-overview-button, .itp-dashboard-jump { min-height: 36px; gap: 6px; padding: 8px 9px; border-radius: 9px; font-size: 13px; }
+  .itp-overview-button, .itp-dashboard-jump { min-height: 36px; gap: 6px; padding: 8px 9px; border-radius: 9px; font-size: 14px; }
   .itp-overview-button > svg, .itp-dashboard-jump > svg { width: 15px; height: 15px; }
-  .itp-scroll-prompt { bottom: 142px; min-height: 32px; padding: 6px 8px; gap: 6px; font-size: 13px; }
-  .itp-scroll-prompt > svg { width: 14px; height: 14px; }
+  .space-navigation-button.itp-scroll-prompt { bottom: 142px; }
   .itp-dashboard-frame { border-radius: calc(20px * (1 - var(--itp-reveal))) calc(20px * (1 - var(--itp-reveal))) 0 0; }
 }
 @media (max-width: 420px) {

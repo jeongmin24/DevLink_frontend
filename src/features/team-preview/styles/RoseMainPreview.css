@@ -11,7 +11,7 @@
   min-height: calc(100vh - var(--design-toolbar-height, 76px));
   background: #fffafa;
   color: var(--rmp-ink);
-  font-family: 'Pretendard', 'Inter', 'Segoe UI', 'Malgun Gothic', sans-serif;
+  font-family: var(--font-sans);
 }
 .rose-main-preview ::selection { color: #493c50; background: #F5CBCB; }
 .rose-main-preview button:focus-visible, .rose-main-preview a:focus-visible, .rose-main-preview input:focus-visible { outline: 3px solid #9b7bab; outline-offset: 4px; }

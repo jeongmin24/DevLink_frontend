@@ -13,6 +13,11 @@ export interface SetupAccount {
 
 export type SetupTool = "codex" | "claude-code";
 
+export interface SetupAgentMetadata {
+  part?: "FRONTEND" | "BACKEND" | "INFRA" | "OTHER";
+  roles?: string[];
+}
+
 export interface ProjectSelection {
   id: string;
   name: string;
@@ -32,7 +37,7 @@ export type SetupResult =
 
 export interface DesktopSetupApi {
   pickFolder: (account: SetupAccount) => Promise<ProjectSelection | null>;
-  run: (id: string, tool: SetupTool, password?: string) => Promise<SetupResult>;
+  run: (id: string, tool: SetupTool, password?: string, metadata?: SetupAgentMetadata) => Promise<SetupResult>;
   check: (id: string) => Promise<boolean>;
   openConfigFolder: (id: string) => Promise<void>;
   onProgress: (listener: (event: SetupProgress) => void) => () => void;
@@ -40,7 +45,7 @@ export interface DesktopSetupApi {
 
 interface DesktopApi {
   version: string;
-  getStatus?: () => Promise<DesktopStatus>;
+  getStatus?: (account: SetupAccount) => Promise<DesktopStatus>;
   setup?: DesktopSetupApi;
 }
 

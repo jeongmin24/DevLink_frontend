@@ -1,4 +1,4 @@
-.mauve-main-preview { --mvp-paper: #faf8f6; --mvp-ink: #302b36; --mvp-mauve: #755c7f; --mvp-rose: #d8b5b0; --mvp-pale: #eee6ef; --mvp-muted: #807885; --mvp-line: #e9e4e9; display: grid; grid-template-columns: 76px minmax(0, 1fr); min-height: calc(100svh - var(--design-toolbar-height, 84px)); background: var(--mvp-paper); color: var(--mvp-ink); font-family: 'Pretendard', 'Inter', 'Segoe UI', 'Malgun Gothic', sans-serif; }
+.mauve-main-preview { --mvp-paper: #faf8f6; --mvp-ink: #302b36; --mvp-mauve: #755c7f; --mvp-rose: #d8b5b0; --mvp-pale: #eee6ef; --mvp-muted: #807885; --mvp-line: #e9e4e9; display: grid; grid-template-columns: 76px minmax(0, 1fr); min-height: calc(100svh - var(--design-toolbar-height, 84px)); background: var(--mvp-paper); color: var(--mvp-ink); font-family: var(--font-sans); }
 .mauve-main-preview ::selection { background: var(--mvp-pale); color: var(--mvp-ink); }
 .mauve-main-preview button { color: inherit; }
 .mauve-main-preview button:focus-visible, .mauve-main-preview a:focus-visible, .mauve-main-preview input:focus-visible { outline: 2px solid var(--mvp-mauve); outline-offset: 4px; }

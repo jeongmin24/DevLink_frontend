@@ -1,5 +1,5 @@
 const { execFile, spawn } = require("node:child_process");
-const { mkdtemp, readFile, rmdir, unlink, writeFile } = require("node:fs/promises");
+const { mkdtemp, readFile, rmdir, stat, unlink, writeFile } = require("node:fs/promises");
 const path = require("node:path");
 const { createInterface } = require("node:readline");
 const { parseEnv } = require("node:util");
@@ -66,12 +66,23 @@ function runtimeArgs(paths) {
 
 async function runStatus(paths) {
   const current = paths ?? await loadDevelopmentPaths();
+  if (current.accountProfile && !(await hasConfig(current))) {
+    return { exitCode: 0, result: { data: { connection: { setupReady: false } } } };
+  }
   return runJson(current, ["setup", "status", "--output", "json", ...runtimeArgs(current)]);
 }
 
 async function checkSession(paths) {
+  if (paths.accountProfile && !(await hasConfig(paths))) return { state: "logged_out", authenticated: false };
   const { result } = await runJson(paths, ["auth", "status"], true);
   return result;
+}
+
+function hasConfig(paths) {
+  return stat(paths.config).then(() => true, (error) => {
+    if (error.code === "ENOENT") return false;
+    throw error;
+  });
 }
 
 async function detectTools(paths) {

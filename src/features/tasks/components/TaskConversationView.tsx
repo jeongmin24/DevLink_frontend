@@ -1,10 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Icon } from '@/components/ui'
 import { ApiError } from '@/lib/apiClient'
 import { taskKeys, useTaskDetail, useTaskHistory } from '../hooks/useTasks'
 import type { TaskDetail, TaskEvent, TaskHistory } from '../types'
-import { compareSequences, formatTaskTime, mergeTaskEvents, taskStatusLabels, taskTitle } from '../utils/taskPresentation'
+import { compareSequences, formatTaskTime, mergeTaskEvents, parseTaskPrompt, taskStatusLabels, taskTitle } from '../utils/taskPresentation'
 import '../styles/task-conversation.css'
 
 interface TaskConversationViewProps {
@@ -39,6 +41,32 @@ function RecordTime({ value, utc = false, className }: { value: string; utc?: bo
   return <time className={className} title={localTime ? '내 기기의 시간대 기준' : '서버에 기록된 시각'}>{formatTaskTime(value, utc)}<span className="tc-time-basis">· {localTime ? '내 시간' : '서버 시각'}</span></time>
 }
 
+function InitialTaskRequest({ prompt, fallbackTitle }: { prompt: string; fallbackTitle: string }) {
+  const request = parseTaskPrompt(prompt);
+
+  return (
+    <section className="tc-bubble tc-request-card" aria-label="최초 작업 요청">
+      <header className="tc-request-heading">
+        <span className="tc-message-kind">최초 작업 요청</span>
+        <h3>{request.title || fallbackTitle}</h3>
+      </header>
+      <div className="tc-request-description">
+        {request.description.trim() ? (
+          <Markdown remarkPlugins={[remarkGfm]} skipHtml components={{
+            h1: "h4",
+            h2: "h4",
+            h3: "h5",
+            table: ({ children }) => <div className="tc-request-table"><table>{children}</table></div>,
+            a: ({ children, href }) => <a href={href} target="_blank" rel="noreferrer">{children}</a>,
+          }}>
+            {request.description}
+          </Markdown>
+        ) : <p>등록된 요청 설명이 없습니다.</p>}
+      </div>
+    </section>
+  );
+}
+
 function EventMessage({ event, detail, eventsById }: {
   event: TaskEvent
   detail: TaskDetail
@@ -68,7 +96,7 @@ function EventMessage({ event, detail, eventsById }: {
     <li className={`tc-message-row ${requester ? 'tc-requester' : 'tc-receiver'}`} data-event-id={event.eventId}>
       <span className="tc-agent-avatar" aria-hidden="true"><Icon name="agent" size={18} /></span>
       <div className="tc-message-content">
-        <div className="tc-message-meta"><strong>{author.name}</strong><span>{requester ? '요청 Agent' : '수신 Agent'}</span></div>
+        <div className="tc-message-meta"><strong>{author.name}</strong></div>
         <div className="tc-bubble">
           <span className="tc-message-kind">{eventLabels[event.eventType]}</span>
           {event.questionEventId && (
@@ -95,7 +123,7 @@ function TaskResult({ history }: { history: TaskHistory }) {
     <section className={`tc-result-card ${failed || rejected ? 'tc-result-attention' : ''}`} aria-label="저장된 작업 결과">
       <header>
         <span className="tc-result-icon"><Icon name={failed || rejected ? 'shield' : 'check'} size={18} /></span>
-        <div><span className="tc-result-eyebrow">TASK RESULT</span><h3>{failed ? '작업 실패' : rejected ? '작업 거절' : history.resultText !== null ? '작업 결과' : '변경 파일'}</h3></div>
+        <div><h3>{failed ? "작업 실패" : rejected ? "작업 거절" : history.resultText !== null ? "작업 결과" : "변경 파일"}</h3></div>
         {failed && history.partiallyModified && <span className="tc-partial-badge">일부 수정됨</span>}
       </header>
       {text !== null && <p className="tc-message-text tc-result-text">{text}</p>}
@@ -211,25 +239,25 @@ function ConversationContent({ userId, teamId, taskId, autoRefresh, onError, onB
         <div className="tc-heading">
           {onBack && <button type="button" className="icon-button tc-back" onClick={onBack} aria-label="작업 목록으로 돌아가기"><Icon name="arrow" size={18} /></button>}
           <div>
-            <span className="tc-eyebrow">TASK CONVERSATION <span>#{taskId}</span></span>
-            <h2>{detail ? taskTitle(detail) : `작업 #${taskId}`}</h2>
-            {detail && <p className="tc-team-name"><Icon name="team" size={13} />{detail.teamName}</p>}
+            <h2 title={detail ? taskTitle(detail) : `작업 #${taskId}`}>{detail ? taskTitle(detail) : `작업 #${taskId}`}</h2>
+            {detail && (
+              <div className="tc-context">
+                <p className="tc-team-name" title={`팀 · ${detail.teamName}`}><Icon name="team" size={13} /><span>팀 · {detail.teamName}</span></p>
+                <div className="tc-participants" aria-label="대화 참여 Agent">
+                  <Icon name="agent" size={13} />
+                  <span title={detail.requesterAgent.name}>{detail.requesterAgent.name}</span>
+                  <span className="tc-participant-divider" aria-hidden="true">·</span>
+                  <span title={detail.receiverAgent.name}>{detail.receiverAgent.name}</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className="tc-header-actions">
-          {detail && <span className="tc-status" data-status={detail.status}><span />{taskStatusLabels[detail.status]}</span>}
-          <button type="button" className="icon-button" onClick={refresh} disabled={refreshing && !accessError} aria-label="대화 기록 새로고침" title="대화 기록 새로고침"><Icon name="refresh" size={17} className={refreshing ? 'tc-spinning' : ''} /></button>
+          {detail && <span className={`dashboard-task-badge dashboard-task-${detail.status.toLowerCase()}`}>{taskStatusLabels[detail.status]}</span>}
+          <button type="button" className="icon-button refresh-button" onClick={refresh} disabled={refreshing && !accessError} aria-label="대화 기록 새로고침" title="대화 기록 새로고침" aria-busy={refreshing}><Icon name="refresh" size={18} /></button>
         </div>
       </header>
-
-      {detail && (
-        <div className="tc-participants">
-          <div><span className="tc-participant-icon tc-participant-requester"><Icon name="agent" size={16} /></span><span><small>요청 Agent</small><strong>{detail.requesterAgent.name}</strong></span></div>
-          <Icon name="arrow" size={15} />
-          <div><span className="tc-participant-icon"><Icon name="agent" size={16} /></span><span><small>수신 Agent</small><strong>{detail.receiverAgent.name}</strong></span></div>
-          <RecordTime className="tc-created-time" value={detail.createdAt} />
-        </div>
-      )}
 
       {error && (detail || latestHistory) && <div className="tc-refresh-error" role="alert"><span>{errorMessage(error)}</span><button type="button" onClick={refresh} disabled={refreshing}>다시 시도</button></div>}
 
@@ -238,7 +266,7 @@ function ConversationContent({ userId, teamId, taskId, autoRefresh, onError, onB
           {(!detail || !latestHistory) && (
             <div className="tc-query-state" role={error ? 'alert' : 'status'}>
               <span className="tc-state-icon"><Icon name={error ? 'shield' : 'book'} size={25} /></span>
-              <h3>{accessError ? accessError.status === 404 ? '이 작업을 찾을 수 없습니다' : '이 대화를 열 수 없습니다' : error ? '대화 기록을 불러오지 못했습니다' : '대화 기록을 불러오고 있습니다'}</h3>
+              <h3>{accessError ? accessError.status === 404 ? "작업 없음" : "대화 접근 제한" : error ? "대화 기록 조회 실패" : "대화 기록 불러오는 중"}</h3>
               <p>{error ? errorMessage(error) : '작업 요청과 Agent 사이에 오간 기록을 확인하고 있어요.'}</p>
               {error && <button type="button" className="button button-secondary button-small" disabled={refreshing && !accessError} onClick={refresh}><Icon name="refresh" size={14} />다시 시도</button>}
             </div>
@@ -250,8 +278,8 @@ function ConversationContent({ userId, teamId, taskId, autoRefresh, onError, onB
               <div className="tc-message-row tc-requester tc-initial-request">
                 <span className="tc-agent-avatar" aria-hidden="true"><Icon name="agent" size={18} /></span>
                 <div className="tc-message-content">
-                  <div className="tc-message-meta"><strong>{detail.requesterAgent.name}</strong><span>요청 Agent</span></div>
-                  <div className="tc-bubble"><span className="tc-message-kind">최초 작업 요청</span><p className="tc-message-text">{latestHistory.prompt}</p></div>
+                  <div className="tc-message-meta"><strong>{detail.requesterAgent.name}</strong></div>
+                  <InitialTaskRequest prompt={latestHistory.prompt} fallbackTitle={taskTitle(detail)} />
                   <RecordTime className="tc-message-time" value={detail.createdAt} />
                 </div>
               </div>
@@ -267,7 +295,6 @@ function ConversationContent({ userId, teamId, taskId, autoRefresh, onError, onB
         </div>
         {(newEvents > 0 || awayFromLatest) && detail && latestHistory && <button type="button" className="tc-latest-button" onClick={goToLatest}><span aria-live="polite">{newEvents > 0 ? `새 기록 ${newEvents}개 · 최신으로 이동` : '최신 기록으로 이동'}</span><Icon name="arrow" size={14} /></button>}
       </div>
-      <footer className="tc-footer"><Icon name="eye" size={14} /><span>Agent 사이에 오간 기록을 확인하는 공간입니다.</span><details className="tc-time-help"><summary>시간 표시 기준</summary><p>질문·답변은 내 기기의 시간대로 표시합니다. 작업 생성과 상태 변경은 서버에 기록된 시각을 표시하므로 기준이 다를 수 있습니다.</p></details><span className="tc-readonly-label">읽기 전용</span></footer>
     </section>
   )
 }

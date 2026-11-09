@@ -2,12 +2,7 @@ import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 
 const AGENT_MODEL_SIZE = 0.38
-const AGENT_MODELS = [
-  { file: 'mascot1.glb', rotationY: Math.PI / 2 },
-  { file: 'mascot2.glb', rotationY: 0 },
-] as const
-const FACE_REFERENCE_SHADOW = new THREE.Color('#5c6e88')
-const FACE_REFERENCE_HIGHLIGHT = new THREE.Color('#a5b9d8')
+const AGENT_MODELS = ["mascot2.glb", "mascot2_sleep.glb"] as const;
 
 export interface AgentCompanion {
   group: THREE.Group
@@ -18,38 +13,8 @@ export interface AgentCompanion {
 }
 
 export interface AgentCompanionAsset {
-  create: (online: boolean, variant: number, agentId: string) => AgentCompanion
+  create: (online: boolean, variant: number) => AgentCompanion;
   dispose: () => void
-}
-
-function matchFaceReferenceColors(root: THREE.Object3D) {
-  root.traverse((object) => {
-    if (!(object instanceof THREE.Mesh) || Array.isArray(object.material)
-      || object.material.name !== 'Slate_Inset_Velvet') return
-    const colors = object.geometry.getAttribute('color')
-    if (!colors || colors.count === 0) return
-
-    // 참고 이미지에서 측정한 얼굴 색 범위로 정점색 그라데이션 보정
-    const minimum = new THREE.Vector3().setScalar(Infinity)
-    const maximum = new THREE.Vector3().setScalar(-Infinity)
-    const sample = new THREE.Vector3()
-    for (let index = 0; index < colors.count; index++) {
-      sample.fromBufferAttribute(colors, index)
-      minimum.min(sample)
-      maximum.max(sample)
-    }
-    const range = maximum.sub(minimum)
-    const adjusted = colors.clone()
-    for (let index = 0; index < colors.count; index++) {
-      sample.fromBufferAttribute(colors, index).sub(minimum)
-      adjusted.setXYZ(index,
-        THREE.MathUtils.lerp(FACE_REFERENCE_SHADOW.r, FACE_REFERENCE_HIGHLIGHT.r, range.x > 0 ? sample.x / range.x : 0.5),
-        THREE.MathUtils.lerp(FACE_REFERENCE_SHADOW.g, FACE_REFERENCE_HIGHLIGHT.g, range.y > 0 ? sample.y / range.y : 0.5),
-        THREE.MathUtils.lerp(FACE_REFERENCE_SHADOW.b, FACE_REFERENCE_HIGHLIGHT.b, range.z > 0 ? sample.z / range.z : 0.5),
-      )
-    }
-    object.geometry.setAttribute('color', adjusted)
-  })
 }
 
 function disposeModel(root: THREE.Object3D) {
@@ -79,25 +44,21 @@ function disposeModel(root: THREE.Object3D) {
   root.clear()
 }
 
-async function loadModelTemplate(file: string, rotationY: number): Promise<THREE.Group> {
+async function loadModelTemplate(file: string): Promise<THREE.Group> {
   const gltf = await new GLTFLoader().loadAsync(
     `${import.meta.env.BASE_URL}models/${file}`,
   )
   const template = new THREE.Group()
-  const oriented = new THREE.Group()
-  oriented.rotation.y = rotationY
-  oriented.add(gltf.scene)
-  template.add(oriented)
+  template.add(gltf.scene);
 
   try {
-    matchFaceReferenceColors(gltf.scene)
     const bounds = new THREE.Box3().setFromObject(template)
     const size = bounds.getSize(new THREE.Vector3())
     const largestDimension = Math.max(size.x, size.y, size.z)
     if (bounds.isEmpty() || !Number.isFinite(largestDimension) || largestDimension <= 0) {
       throw new Error('Agent 모델의 크기를 확인하지 못했습니다.')
     }
-    oriented.position.sub(bounds.getCenter(new THREE.Vector3()))
+    gltf.scene.position.sub(bounds.getCenter(new THREE.Vector3()));
     template.scale.setScalar(AGENT_MODEL_SIZE / largestDimension)
     return template
   } catch (error) {
@@ -107,7 +68,7 @@ async function loadModelTemplate(file: string, rotationY: number): Promise<THREE
 }
 
 export async function loadAgentCompanionAsset(): Promise<AgentCompanionAsset> {
-  const results = await Promise.allSettled(AGENT_MODELS.map(({ file, rotationY }) => loadModelTemplate(file, rotationY)))
+  const results = await Promise.allSettled(AGENT_MODELS.map(loadModelTemplate));
   const templates = results.flatMap((result) => result.status === 'fulfilled' ? [result.value] : [])
   const failure = results.find((result) => result.status === 'rejected')
   if (failure?.status === 'rejected') {
@@ -116,23 +77,17 @@ export async function loadAgentCompanionAsset(): Promise<AgentCompanionAsset> {
   }
 
   const instances = new Set<AgentCompanion>()
-  const modelAssignments = new Map<string, number>()
   let disposed = false
 
   return {
-    create(online, variant, agentId) {
+    create(online, variant) {
       if (disposed) throw new Error('이미 해제된 Agent 모델입니다.')
-      // Agent별 최초 무작위 배정 유지, 데이터 갱신 시 모델 교체 방지
-      let modelIndex = modelAssignments.get(agentId)
-      if (modelIndex === undefined) {
-        modelIndex = Math.floor(Math.random() * templates.length)
-        modelAssignments.set(agentId, modelIndex)
-      }
+      const modelIndex = online ? 0 : 1;
       const group = new THREE.Group()
       const body = new THREE.Group()
       const model = templates[modelIndex].clone(true)
       const materials = new Map<THREE.Material, THREE.Material>()
-      group.name = `AgentMascot-${AGENT_MODELS[modelIndex].file}`
+      group.name = `AgentMascot-${AGENT_MODELS[modelIndex]}`;
       body.add(model)
       group.add(body)
 
@@ -140,39 +95,13 @@ export async function loadAgentCompanionAsset(): Promise<AgentCompanionAsset> {
       const cloneMaterial = (source: THREE.Material) => {
         let material = materials.get(source)
         if (!material) {
-          if (source instanceof THREE.MeshStandardMaterial && source.name === 'Slate_Inset_Velvet') {
-            // 참고 이미지의 얼굴 색상과 그라데이션 유지, 조명과 톤 매핑 영향 제외
-            material = new THREE.MeshBasicMaterial({
-              name: source.name,
-              color: source.color.clone(),
-              map: source.map,
-              alphaMap: source.alphaMap,
-              alphaTest: source.alphaTest,
-              vertexColors: source.vertexColors,
-              side: source.side,
-              transparent: source.transparent,
-              opacity: source.opacity,
-              depthTest: source.depthTest,
-              depthWrite: source.depthWrite,
-              toneMapped: false,
-              fog: false,
-            })
-          } else {
-            material = source.clone()
-          }
+          material = source.clone();
           material.userData.agentBaseOpacity = material.opacity
           material.userData.agentBaseTransparent = material.transparent
           material.userData.agentBaseDepthWrite = material.depthWrite
           if (material instanceof THREE.MeshStandardMaterial || material instanceof THREE.MeshBasicMaterial) {
             // 안개로 인한 마스코트 얼굴 대비 저하 방지
             material.fog = false
-          }
-          if (material instanceof THREE.MeshPhysicalMaterial) {
-            // 눈 렌즈의 밝은 반사 완화
-            if (material.name === 'Lens_Clear_Crystal') {
-              material.specularIntensity = 0.12
-              material.envMapIntensity = 0.15
-            }
           }
           materials.set(source, material)
         }
@@ -213,7 +142,6 @@ export async function loadAgentCompanionAsset(): Promise<AgentCompanionAsset> {
       disposed = true
       instances.forEach((companion) => companion.dispose())
       templates.forEach(disposeModel)
-      modelAssignments.clear()
     },
   }
 }

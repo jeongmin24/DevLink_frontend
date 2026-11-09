@@ -10,8 +10,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         </a>
         <div className="auth-story-content">
           <div className="auth-story-copy">
-            <h1 id="auth-story-title">팀의 <span className="auth-story-emphasis">Agent</span>를<br />한곳에서 관리하세요</h1>
-            <p>Codex와 Claude Code를 팀의 작업 공간에 연결하세요.</p>
+            <h1 id="auth-story-title">팀 <span className="auth-story-emphasis">Agent</span><br />워크스페이스</h1>
           </div>
           <div className="auth-mascot-stage">
             <img

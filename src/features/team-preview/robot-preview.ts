@@ -114,7 +114,7 @@ function mountPreview() {
     }
     companionAsset = asset;
     for (const [index, online] of [true, false].entries()) {
-      const robot = asset.create(online, index, `preview-${index}`);
+      const robot = asset.create(online, index);
       robots.push(robot);
       robot.group.position.x = index === 0 ? -0.29 : 0.29;
       robot.group.traverse((object) => {

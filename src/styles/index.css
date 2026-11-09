@@ -3,8 +3,10 @@
 @import 'tailwindcss/utilities.css' layer(utilities);
 @import './workspace.css' layer(components);
 @import './auth.css' layer(components);
+@import './onboarding.css' layer(components);
 
 @theme static {
+  --font-sans: "Pretendard Variable", "Pretendard", "Segoe UI", "Malgun Gothic", sans-serif;
   --spacing: 4px;
   --color-workspace: #f8fafc;
   --color-ink: #1f2c39;
@@ -21,16 +23,16 @@
   --workspace-muted: #5b6875;
   --workspace-action: #3d4a57;
   --workspace-focus: #61778b;
-  font-family: 'Pretendard', 'Inter', 'Segoe UI', 'Malgun Gothic', sans-serif;
+  font-family: var(--font-sans);
   color: var(--color-ink);
   background: var(--color-workspace);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-weight: 400;
+  font-weight: 450;
   line-height: 1.6;
-  font-size: 14px;
+  font-size: 15px;
   color-scheme: light;
 }
 

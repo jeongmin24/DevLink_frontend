@@ -10,10 +10,10 @@ import type { TeamMember } from "@/features/teams/types";
 const emptyMembers: TeamMember[] = [];
 const emptyAgents: Agent[] = [];
 
-export function useWorkspace(userId: number) {
+export function useWorkspace(userId: number, initialTeamId?: number) {
   const client = useQueryClient()
   const { onError } = useSession()
-  const [preferredTeamId, setPreferredTeamId] = useState<number | null>(null)
+  const [preferredTeamId, setPreferredTeamId] = useState<number | null>(initialTeamId ?? null)
   const teamsQuery = useTeams(userId)
   const teams = teamsQuery.data ?? []
   const selectedTeamId = teams.find((team) => team.teamId === preferredTeamId)?.teamId

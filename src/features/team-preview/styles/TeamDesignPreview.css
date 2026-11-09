@@ -5,7 +5,7 @@
   min-height: 100vh;
   color: var(--tp-ink);
   background: #f6f7f2;
-  font-family: 'Pretendard', 'Inter', 'Segoe UI', 'Malgun Gothic', sans-serif;
+  font-family: var(--font-sans);
 }
 .team-preview button, .team-preview a, .team-preview select { -webkit-tap-highlight-color: transparent; }
 .team-preview button:focus-visible, .team-preview a:focus-visible, .team-preview select:focus-visible { outline: 3px solid #7eac58; outline-offset: 4px; }

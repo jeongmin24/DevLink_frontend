@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react'
 import type { CSSProperties, RefObject } from 'react'
 import * as THREE from 'three'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
-import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { createMemberLaptop } from "../lib/memberLaptop.js";
 import { loadAgentCompanionAsset } from '../lib/agentCompanionAsset'
 import type { AgentCompanion, AgentCompanionAsset } from '../lib/agentCompanionAsset'
 import type { PreviewMember } from '../data/previewData'
@@ -17,47 +18,50 @@ interface ImmersiveTeamSceneProps {
   onRenderRequestChange: (requestRender: () => void) => void
   onSelectMember: (id: string) => void
   paused: boolean
-  exploded: boolean
   topView: boolean;
   onAvailabilityChange: (available: boolean) => void
-}
-
-const colors: Record<string, string> = {
-  sage: '#858585', blue: '#6b6b6b', peach: '#a5a5a5',
-  lavender: '#909090', sand: '#bdbdbd', mint: '#999999',
 }
 
 const MOBILE_BREAKPOINT = 680
 const LABEL_SIDE_SWITCH_THRESHOLD = 20;
 const TOP_VIEW_POLAR = 0.025;
 const TEAM_REVEAL_SECONDS = 0.72;
+const MEMBER_REVEAL_RISE = 0.24;
+const TEAM_CHARACTER_HEIGHT = 2.1;
+const TEAM_CHARACTER_CENTER_Y = 0.24;
 
-function createTeamSculpture() {
-  const group = new THREE.Group()
-  const silver = new THREE.Mesh(new RoundedBoxGeometry(0.92, 1.16, 0.25, 5, 0.055), new THREE.MeshStandardMaterial({ color: '#cfd1d4', metalness: 0.72, roughness: 0.31 }))
-  silver.position.set(-0.2, 0.04, 0.14)
-  silver.rotation.set(0.03, -0.1, -0.18)
-  const graphite = new THREE.Mesh(new RoundedBoxGeometry(0.92, 1.16, 0.25, 5, 0.055), new THREE.MeshStandardMaterial({ color: '#2c2e32', metalness: 0.45, roughness: 0.37 }))
-  graphite.position.set(0.2, -0.04, -0.14)
-  graphite.rotation.set(-0.03, 0.1, 0.18)
-  group.add(silver, graphite)
+async function loadTeamCharacter(): Promise<THREE.Group> {
+  const gltf = await new GLTFLoader().loadAsync(
+    `${import.meta.env.BASE_URL}models/character.glb`,
+  );
+  const group = new THREE.Group();
+  group.name = "TeamCharacter";
+  group.add(gltf.scene);
+  const bounds = new THREE.Box3().setFromObject(group);
+  const size = bounds.getSize(new THREE.Vector3());
+  if (bounds.isEmpty() || !Number.isFinite(size.y) || size.y <= 0) {
+    disposeObjectResources(group);
+    throw new Error("팀 캐릭터의 크기를 확인하지 못했습니다.");
+  }
+  gltf.scene.position.sub(bounds.getCenter(new THREE.Vector3()));
+  group.scale.setScalar(TEAM_CHARACTER_HEIGHT / size.y);
+  group.rotation.y = -0.28;
   group.traverse((object) => {
-    if (object instanceof THREE.Mesh) { object.castShadow = true; object.receiveShadow = true }
-  })
-  return group
-}
-
-function createMemberObject(color: THREE.Color) {
-  const prism = new THREE.Mesh(new RoundedBoxGeometry(0.58, 0.7, 0.58, 3, 0.024), new THREE.MeshStandardMaterial({ color, metalness: 0.5, roughness: 0.34 }));
-  prism.castShadow = true;
-  prism.receiveShadow = true;
-  return prism;
+    if (!(object instanceof THREE.Mesh)) return;
+    object.castShadow = true;
+    object.receiveShadow = true;
+    for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+      if (material instanceof THREE.MeshStandardMaterial) material.fog = false;
+    }
+  });
+  return group;
 }
 
 function disposeObjectResources(root: THREE.Object3D) {
   const geometries = new Set<THREE.BufferGeometry>()
   const materials = new Set<THREE.Material>()
   const textures = new Set<THREE.Texture>()
+  const images = new Set<ImageBitmap>();
   root.traverse((object) => {
     if (object instanceof THREE.Mesh || object instanceof THREE.Line || object instanceof THREE.Points) {
       geometries.add(object.geometry)
@@ -72,21 +76,25 @@ function disposeObjectResources(root: THREE.Object3D) {
   }
   geometries.forEach((geometry) => geometry.dispose())
   materials.forEach((material) => material.dispose())
-  textures.forEach((texture) => texture.dispose())
+  textures.forEach((texture) => {
+    texture.dispose();
+    if (typeof ImageBitmap !== "undefined" && texture.image instanceof ImageBitmap) images.add(texture.image);
+  });
+  images.forEach((image) => image.close());
 }
 
-export default function ImmersiveTeamScene({ teamName, members, loading, selectedMemberId, focusedMemberId, scrollState, onRenderRequestChange, onSelectMember, paused, exploded, topView, onAvailabilityChange }: ImmersiveTeamSceneProps) {
+export default function ImmersiveTeamScene({ teamName, members, loading, selectedMemberId, focusedMemberId, scrollState, onRenderRequestChange, onSelectMember, paused, topView, onAvailabilityChange }: ImmersiveTeamSceneProps) {
   const host = useRef<HTMLDivElement>(null)
   const labelsLayer = useRef<HTMLDivElement>(null)
   const teamLabel = useRef<HTMLDivElement>(null)
   const memberLabels = useRef(new Map<string, HTMLButtonElement>())
   const wake = useRef<() => void>(() => {})
-  const control = useRef({ teamName, members, loading, selectedMemberId, focusedMemberId, scrollState, onSelectMember, paused, exploded, topView, onAvailabilityChange });
+  const control = useRef({ teamName, members, loading, selectedMemberId, focusedMemberId, scrollState, onSelectMember, paused, topView, onAvailabilityChange });
 
   useEffect(() => {
-    control.current = { teamName, members, loading, selectedMemberId, focusedMemberId, scrollState, onSelectMember, paused, exploded, topView, onAvailabilityChange };
+    control.current = { teamName, members, loading, selectedMemberId, focusedMemberId, scrollState, onSelectMember, paused, topView, onAvailabilityChange };
     wake.current()
-  }, [teamName, members, loading, selectedMemberId, focusedMemberId, scrollState, onSelectMember, paused, exploded, topView, onAvailabilityChange]);
+  }, [teamName, members, loading, selectedMemberId, focusedMemberId, scrollState, onSelectMember, paused, topView, onAvailabilityChange]);
 
   useEffect(() => {
     onRenderRequestChange(() => wake.current())
@@ -167,37 +175,45 @@ export default function ImmersiveTeamScene({ teamName, members, loading, selecte
     floor.add(floorShadows);
 
     const core = new THREE.Group()
-    core.position.y = -0.1
-    const teamHub = createTeamSculpture()
-    teamHub.rotation.y = -0.28
-    core.add(teamHub)
+    core.position.y = TEAM_CHARACTER_CENTER_Y;
     world.add(core)
-
-    const loadingColor = new THREE.Color("#aebbc9");
-    const loadingCube = createMemberObject(loadingColor);
-    const loadingSpin = new THREE.Euler();
-    const loadingOrientation = new THREE.Quaternion();
-    const firstMemberOrientation = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), 0.28);
-    world.add(loadingCube);
 
     const selectables: THREE.Mesh[] = [];
     let companionAsset: AgentCompanionAsset | null = null;
+    let teamCharacter: THREE.Group | null = null;
+    let loadingAgent: AgentCompanion | null = null;
+    const loadingAgentAppearance = {
+      fadeMeshes: [] as THREE.Mesh[],
+      fadeMaterials: new Set<THREE.Material>(),
+      opacity: 1,
+    };
     function createMemberNodes(teamMembers: PreviewMember[]) {
       const asset = companionAsset;
+      if (!asset) return [];
       return teamMembers.map((member, index) => {
-        const color = new THREE.Color(colors[member.color] ?? colors.sage);
         const node = new THREE.Group();
-        const memberObject = index === 0 ? loadingCube : createMemberObject(color);
-        memberObject.position.set(0, 0, 0);
-        memberObject.scale.setScalar(1);
-        memberObject.rotation.y = 0.28 + index * 0.17;
-        memberObject.userData.memberId = member.id;
-        selectables.push(memberObject);
-        node.add(memberObject);
-        const fadeMeshes: THREE.Mesh[] = index === 0 ? [] : [memberObject];
-        const fadeMaterials = new Set<THREE.Material>(index === 0 ? [] : [memberObject.material]);
-        const satellites: AgentCompanion[] = asset ? member.agents.map((agent, agentIndex) => {
-          const satellite = asset.create(agent.online, index * 2 + agentIndex, agent.id);
+        const memberObject = createMemberLaptop();
+        const hitBounds = new THREE.Box3().setFromObject(memberObject);
+        const hitSize = hitBounds.getSize(new THREE.Vector3()).addScalar(0.04);
+        const hitCenter = hitBounds.getCenter(new THREE.Vector3());
+        const memberYaw = Math.PI / 2 - (index / teamMembers.length * Math.PI * 2 + 0.35);
+        memberObject.rotation.y = memberYaw;
+        const hitMaterial = new THREE.MeshBasicMaterial({ visible: false });
+        const hitArea = new THREE.Mesh(new THREE.BoxGeometry(hitSize.x, hitSize.y, hitSize.z), hitMaterial);
+        hitArea.position.copy(hitCenter).applyAxisAngle(new THREE.Vector3(0, 1, 0), memberYaw);
+        hitArea.rotation.y = memberYaw;
+        hitArea.userData.memberId = member.id;
+        selectables.push(hitArea);
+        node.add(memberObject, hitArea);
+        const fadeMeshes: THREE.Mesh[] = [];
+        const fadeMaterials = new Set<THREE.Material>();
+        memberObject.traverse((object) => {
+          if (!(object instanceof THREE.Mesh)) return;
+          fadeMeshes.push(object);
+          for (const material of Array.isArray(object.material) ? object.material : [object.material]) fadeMaterials.add(material);
+        });
+        const satellites: AgentCompanion[] = member.agents.map((agent, agentIndex) => {
+          const satellite = asset.create(agent.online, index * 2 + agentIndex);
           satellite.group.position.set(Math.cos(agentIndex * 2.2) * 0.84, 0.1 + agentIndex * 0.13, Math.sin(agentIndex * 2.2) * 0.84);
           satellite.group.rotation.y = -agentIndex * 2.2;
           satellite.group.traverse((object) => {
@@ -210,9 +226,9 @@ export default function ImmersiveTeamScene({ teamName, members, loading, selecte
           });
           node.add(satellite.group);
           return satellite;
-        }) : [];
+        });
         world.add(node);
-        return { node, member, color, index, satellites, fadeMeshes, fadeMaterials, opacity: 1, selection: 0 };
+        return { node, member, index, satellites, fadeMeshes, fadeMaterials, opacity: 1, selection: 0 };
       });
     }
     let sceneMembers = control.current.members;
@@ -226,7 +242,6 @@ export default function ImmersiveTeamScene({ teamName, members, loading, selecte
     let height = 1
     let elapsed = 0
     let previous = performance.now()
-    let expansion = control.current.exploded ? 1 : 0
     let entrance = control.current.paused ? 1 : 0
     let azimuth = 0.16
     let targetAzimuth = 0.16
@@ -236,9 +251,8 @@ export default function ImmersiveTeamScene({ teamName, members, loading, selecte
     let lastSelectedId = ''
     let lastRenderedScroll = -1
     let cameraInitialized = false
-    let teamReveal = control.current.loading ? 0 : 1;
+    let teamReveal = 0;
     let lastReveal = -1;
-    let loadingTime = 0;
     let lastTeamName = control.current.teamName;
     let viewOffsetX = 0
     let viewOffsetY = 0
@@ -274,8 +288,6 @@ export default function ImmersiveTeamScene({ teamName, members, loading, selecte
     function updateMembers(nextMembers: PreviewMember[], force = false) {
       if (!force && sceneMembers === nextMembers) return;
       const labelSides = new Map(labelPlacements.map((placement) => [placement.item.member.id, placement.side]));
-      world.add(loadingCube);
-      delete loadingCube.userData.memberId;
       for (const { node, satellites } of memberNodes) {
         for (const satellite of satellites) satellite.dispose();
         world.remove(node);
@@ -288,7 +300,11 @@ export default function ImmersiveTeamScene({ teamName, members, loading, selecte
       layoutDirty = true;
     }
 
-    function fadeMember(item: (typeof memberNodes)[number], opacity: number) {
+    function fadeObject(item: {
+      fadeMeshes: THREE.Mesh[];
+      fadeMaterials: Set<THREE.Material>;
+      opacity: number;
+    }, opacity: number) {
       if (item.opacity === opacity) return;
       const fading = opacity < 1;
       const transparencyChanged = fading !== (item.opacity < 1);
@@ -363,7 +379,7 @@ export default function ImmersiveTeamScene({ teamName, members, loading, selecte
       const teamElement = teamLabel.current
       teamBox.visible = control.current.focusedMemberId === null
       if (teamElement) teamElement.style.visibility = teamBox.visible ? 'visible' : 'hidden'
-      core.localToWorld(labelPoint.set(0, 1.05, 0)).project(camera)
+      core.localToWorld(labelPoint.set(0, TEAM_CHARACTER_HEIGHT / 2 + 0.3, 0)).project(camera);
       if (teamElement && teamBox.visible) {
         const x = THREE.MathUtils.clamp((labelPoint.x * 0.5 + 0.5) * width, teamBox.halfWidth + 16, width - teamBox.halfWidth - 16)
         const y = THREE.MathUtils.clamp((-labelPoint.y * 0.5 + 0.5) * height, minY, maxY)
@@ -437,7 +453,7 @@ export default function ImmersiveTeamScene({ teamName, members, loading, selecte
       const progress = THREE.MathUtils.clamp(control.current.scrollState.current.progress, 0, 1)
       const focusId = control.current.focusedMemberId
       const lookingDown = control.current.topView;
-      const loading = control.current.loading;
+      const loading = control.current.loading || !companionAsset || !teamCharacter;
       updateMembers(control.current.members);
       if (lastFocusId !== focusId || lastSelectedId !== control.current.selectedMemberId || lastTeamName !== control.current.teamName) layoutDirty = true;
       lastSelectedId = control.current.selectedMemberId
@@ -446,7 +462,6 @@ export default function ImmersiveTeamScene({ teamName, members, loading, selecte
       if (!frozen) elapsed += delta
       if (loading) {
         teamReveal = 0;
-        if (!frozen) loadingTime += delta;
       } else if (frozen || progress >= 0.12 || lastRenderedScroll >= 1) {
         teamReveal = 1;
       } else {
@@ -461,52 +476,36 @@ export default function ImmersiveTeamScene({ teamName, members, loading, selecte
         }
         lastReveal = reveal;
       }
-      const orbitAngle = loadingTime * 0.47;
-      const loadingHeight = -0.1 + Math.sin(orbitAngle * 2) * 0.14;
-      if (loading) {
-        const spinTime = loadingTime * 0.78;
-        loadingSpin.set(
-          spinTime * 6.4 + Math.sin(spinTime * 2.7) * 0.65,
-          -spinTime * 8.1 + Math.sin(spinTime * 3.4 + 0.4) * 0.8,
-          spinTime * 4.9 + Math.sin(spinTime * 1.9 + 1.2) * 0.7,
-        );
-        loadingOrientation.setFromEuler(loadingSpin);
-      }
-      loadingCube.visible = memberNodes.length > 0 || loadingWeight > 0;
-      if (loadingCube.parent === world && loadingCube.visible) {
-        const angle = orbitAngle + 0.35;
-        loadingCube.position.set(Math.cos(angle) * 1.76, loadingHeight, Math.sin(angle) * 1.76);
-        loadingCube.quaternion.copy(loadingOrientation);
-        loadingCube.material.color.copy(loadingColor);
-        loadingCube.scale.setScalar(0.82 * loadingWeight);
-      }
       entrance = THREE.MathUtils.lerp(entrance, 1, frozen ? 1 : 1 - Math.exp(-delta * 2.4))
-      expansion = THREE.MathUtils.lerp(expansion, control.current.exploded ? 1 : 0, blend)
       world.scale.setScalar((0.96 + entrance * 0.04) * (1 - progress * 0.14))
       world.position.y = -0.025 + entrance * 0.025 + progress * 0.16
-      core.position.y = -0.1 + Math.sin(elapsed * 0.4) * 0.008
-      const phase = Math.atan2(Math.sin(orbitAngle), Math.cos(orbitAngle));
-      const memberRadius = 2.62 + expansion * 1.05;
+      core.position.y = TEAM_CHARACTER_CENTER_Y + Math.sin(elapsed * 0.4) * 0.008;
+      if (loadingAgent) {
+        const orbit = elapsed * 0.72;
+        const opacity = 1 - THREE.MathUtils.smoothstep(teamReveal, 0, 0.45);
+        loadingAgent.group.visible = opacity > 0;
+        fadeObject(loadingAgentAppearance, opacity);
+        loadingAgent.group.position.set(
+          Math.cos(orbit) * 1.35,
+          core.position.y + 0.18 + Math.sin(elapsed * 1.5) * 0.055,
+          Math.sin(orbit) * 1.35,
+        );
+        loadingAgent.group.rotation.y = -orbit;
+        loadingAgent.body.rotation.z = Math.sin(elapsed * 0.55) * 0.018;
+      }
+      const memberRadius = 2.62;
       for (const item of memberNodes) {
         const selected = item.member.id === control.current.selectedMemberId
         item.selection = THREE.MathUtils.lerp(item.selection, selected ? 1 : 0, blend)
-        const firstMember = item.index === 0;
-        let angle = item.index / sceneMembers.length * Math.PI * 2 + 0.35;
-        let radius = memberRadius;
-        let height = -0.12 + Math.sin(elapsed * 0.5 + item.index) * 0.006 + item.selection * 0.012;
-        let scale = 1 + item.selection * 0.035;
-        if (firstMember) {
-          angle += phase * loadingWeight;
-          radius = THREE.MathUtils.lerp(1.76, radius, reveal);
-          height = THREE.MathUtils.lerp(loadingHeight, height, reveal);
-          scale = THREE.MathUtils.lerp(0.82, scale, reveal);
-          loadingCube.quaternion.slerpQuaternions(loadingOrientation, firstMemberOrientation, reveal);
-          loadingCube.material.color.lerpColors(loadingColor, item.color, reveal);
-        }
-        item.node.position.set(Math.cos(angle) * radius, height, Math.sin(angle) * radius);
+        const angle = item.index / sceneMembers.length * Math.PI * 2 + 0.35;
+        const fadeStart = Math.min(item.index * 0.045, 0.25);
+        const memberReveal = THREE.MathUtils.smoothstep(teamReveal, fadeStart, 1);
+        const height = -0.12 + Math.sin(elapsed * 0.5 + item.index) * 0.006 + item.selection * 0.012
+          - (1 - memberReveal) * MEMBER_REVEAL_RISE;
+        const scale = 1 + item.selection * 0.035;
+        item.node.position.set(Math.cos(angle) * memberRadius, height, Math.sin(angle) * memberRadius);
         item.node.scale.setScalar(scale);
-        const fadeStart = firstMember ? 0.2 : Math.min(0.1 + (item.index - 1) * 0.045, 0.3);
-        fadeMember(item, THREE.MathUtils.smoothstep(teamReveal, fadeStart, 1));
+        fadeObject(item, memberReveal);
         item.satellites.forEach((satellite, satelliteIndex) => {
           const orbit = elapsed * 0.08 + satelliteIndex * 2.2 + item.index * 0.24
           satellite.group.position.set(Math.cos(orbit) * 0.84, 0.1 + Math.sin(elapsed * 0.7 + satellite.phase) * 0.022, Math.sin(orbit) * 0.84)
@@ -539,9 +538,9 @@ export default function ImmersiveTeamScene({ teamName, members, loading, selecte
         radius = Math.max(4.25, horizontalFit, verticalFit)
       } else {
         target.set(0, 0.05 + progress * 0.08, 0)
-        const horizontalFit = (3.95 + expansion * 0.8) / (tangent * camera.aspect)
-        const verticalFit = (lookingDown ? 3.95 + expansion * 1.05 : 3.15) / tangent;
-        radius = Math.max(11.4 + expansion * 1.1, horizontalFit, verticalFit) * (1 - loadingWeight * 0.14);
+        const horizontalFit = 3.95 / (tangent * camera.aspect)
+        const verticalFit = (lookingDown ? 3.95 : 3.15) / tangent;
+        radius = Math.max(11.4, horizontalFit, verticalFit) * (1 - loadingWeight * 0.14);
       }
       radius *= 1 + progress * 0.18
       orbitOffset.set(Math.sin(azimuth) * Math.sin(polar) * radius, Math.cos(polar) * radius, Math.cos(azimuth) * Math.sin(polar) * radius)
@@ -563,9 +562,9 @@ export default function ImmersiveTeamScene({ teamName, members, loading, selecte
       cameraInitialized = true
       camera.lookAt(cameraTarget)
       renderer.render(scene, camera)
-      if (!loading && teamReveal >= 0.25) updateLabels();
+      if (!loading && teamCharacter && teamReveal >= 0.25) updateLabels();
       else if (labelsElement) labelsElement.style.visibility = "hidden";
-      if (lastRenderedScroll === -1) control.current.onAvailabilityChange(true);
+      if (lastRenderedScroll === -1 && companionAsset && teamCharacter) control.current.onAvailabilityChange(true);
       lastRenderedScroll = progress
       if (frozen || progress >= 1) { renderer.setAnimationLoop(null); running = false }
     }
@@ -657,12 +656,30 @@ export default function ImmersiveTeamScene({ teamName, members, loading, selecte
     canvas.addEventListener('webglcontextrestored', restored)
     document.addEventListener('visibilitychange', visibility)
 
-    void loadAgentCompanionAsset().then((asset) => {
+    void Promise.allSettled([loadAgentCompanionAsset(), loadTeamCharacter()]).then((results) => {
+      const [agentResult, characterResult] = results;
+      const failure = results.find((result) => result.status === "rejected");
+      if (failure?.status === "rejected") {
+        if (agentResult.status === "fulfilled") agentResult.value.dispose();
+        if (characterResult.status === "fulfilled") disposeObjectResources(characterResult.value);
+        throw failure.reason;
+      }
+      if (agentResult.status !== "fulfilled" || characterResult.status !== "fulfilled") return;
       if (disposed) {
-        asset.dispose();
+        agentResult.value.dispose();
+        disposeObjectResources(characterResult.value);
         return;
       }
-      companionAsset = asset;
+      companionAsset = agentResult.value;
+      teamCharacter = characterResult.value;
+      core.add(teamCharacter);
+      loadingAgent = companionAsset.create(true, 0);
+      loadingAgent.group.traverse((object) => {
+        if (!(object instanceof THREE.Mesh)) return;
+        loadingAgentAppearance.fadeMeshes.push(object);
+        for (const material of Array.isArray(object.material) ? object.material : [object.material]) loadingAgentAppearance.fadeMaterials.add(material);
+      });
+      world.add(loadingAgent.group);
       updateMembers(control.current.members, true);
       lastRenderedScroll = -1;
       start();
@@ -692,6 +709,7 @@ export default function ImmersiveTeamScene({ teamName, members, loading, selecte
       canvas.removeEventListener('webglcontextlost', lost)
       canvas.removeEventListener('webglcontextrestored', restored)
       document.removeEventListener('visibilitychange', visibility)
+      loadingAgent?.dispose();
       for (const { satellites } of memberNodes) {
         for (const satellite of satellites) satellite.dispose();
       }
@@ -716,8 +734,8 @@ export default function ImmersiveTeamScene({ teamName, members, loading, selecte
         hidden={focusedMemberId !== null && focusedMemberId !== member.id}
         aria-label={`${member.name} 팀원 선택`}
         onClick={() => { if (control.current.scrollState.current.progress <= 0.12) control.current.onSelectMember(member.id) }}
-        style={{ '--itp-label-color': colors[member.color] ?? colors.sage, visibility: focusedMemberId !== null && focusedMemberId !== member.id ? 'hidden' : undefined } as CSSProperties}
-      ><span className="itp-scene-member-label-dot" aria-hidden="true" /><span>{member.name}</span></button>)}
+        style={{ visibility: focusedMemberId !== null && focusedMemberId !== member.id ? 'hidden' : undefined } as CSSProperties}
+      ><span>{member.name}</span></button>)}
     </div>
   </div>
 }

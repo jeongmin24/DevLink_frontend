@@ -22,6 +22,9 @@ export default defineConfig(({ mode }) => {
       proxy: {},
     },
     server: {
+      watch: {
+        ignored: ['**/desktop/dist/**', '**/desktop/vendor/**', '**/desktop/vendor-stage-*/**'],
+      },
       proxy: {
         '/api': {
           target: env.DEVLINK_API_PROXY_TARGET || 'http://localhost:8080',

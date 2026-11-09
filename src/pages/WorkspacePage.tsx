@@ -21,7 +21,7 @@ import GuidePage from "./GuidePage";
 
 const memberColors = ["sage", "blue", "peach", "lavender", "sand", "mint"];
 
-export default function WorkspacePage({ user }: { user: User }) {
+export default function WorkspacePage({ user, initialTeamId }: { user: User; initialTeamId?: number }) {
   const [view, setView] = useState<WorkspaceView>('workspace')
   const [conversation, setConversation] = useState<{ teamId: number; taskId: number } | null>(null);
   const [autoRefresh, setAutoRefresh] = useState(() => {
@@ -34,7 +34,7 @@ export default function WorkspacePage({ user }: { user: User }) {
   const inviteButton = useRef<HTMLButtonElement>(null);
   const { onError, logout, loggingOut } = useSession()
   const notify = useNotice()
-  const workspace = useWorkspace(user.userId)
+  const workspace = useWorkspace(user.userId, initialTeamId)
   const { teams, selectedTeamId, selectedTeam, members, agents, teamsLoading,
     workspaceLoading, workspaceError, sceneStatus, selectTeam, refreshAll, refreshWorkspace } = workspace;
   const tasksQuery = useTeamTasks(user.userId, selectedTeamId, autoRefresh);
@@ -126,32 +126,31 @@ export default function WorkspacePage({ user }: { user: User }) {
         >
             {workspaceError && ["workspace", "agents", "teams"].includes(view) && <div className="workspace-error" role="alert"><Icon name="shield" /><p>{workspaceError}</p><button type="button" className="button button-secondary button-small" onClick={refreshAll}>다시 불러오기</button></div>}
             {view === "workspace" && <WorkspaceOverviewView
-              user={user} teams={teams} team={selectedTeam} members={members} agents={agents}
+              teams={teams} team={selectedTeam} members={members} agents={agents}
               teamsLoading={teamsLoading} workspaceLoading={workspaceLoading} workspaceError={!!workspaceError}
               tasks={tasks} tasksLoading={tasksLoading} tasksError={tasksError} onSelectTask={selectTask}
               onManageTeams={() => setView("teams")} onManageAgents={() => setView("agents")}
               onGuide={() => setView("guide")} onInvite={openTeamInvite} onRetryTasks={() => { void tasksQuery.refetch(); }}
             />}
             <div hidden={view !== "teams"}>
-              <div className="workspace-view-heading"><p className="overview-eyebrow">TEAM MANAGEMENT</p><h1>함께할 팀을 관리하세요<span className="heading-dot">.</span></h1><p>팀을 만들고, 구성원을 초대하고, 지금 함께하는 사람들을 확인하세요.</p></div>
+              <div className="workspace-view-heading"><h1>팀 관리</h1></div>
               <TeamsPanel teams={teams} selectedTeam={selectedTeam} members={members} currentUserId={user.userId}
                 loading={teamsLoading || workspaceLoading} onSelectTeam={selectTeam} onTeamsChanged={selectTeam}
                 onRefresh={refreshAll} onError={onError} onNotice={notify} inviteButtonRef={inviteButton} />
             </div>
             {view === "agents" && <div>
-              <div className="workspace-view-heading"><p className="overview-eyebrow">AGENT MANAGEMENT</p><h1>팀의 Agent를 연결하세요<span className="heading-dot">.</span></h1><p>담당 영역과 프로젝트, 접속 상태를 확인하고 내 Agent를 관리하세요.</p></div>
+              <div className="workspace-view-heading"><h1>Agent 관리</h1></div>
               {selectedTeam ? <AgentsPanel key={selectedTeam.teamId} team={selectedTeam} agents={agents} members={members}
                 currentUserId={user.userId} currentUserEmail={user.email} loading={workspaceLoading || !!workspaceError}
                 onRefresh={refreshWorkspace} onError={onError} onNotice={notify} />
-                : <section className="workspace-selection-empty"><EmptyState title={teamsLoading ? "팀 정보를 불러오고 있어요" : "첫 번째 팀을 준비해보세요"} description="팀을 만들거나 초대 코드로 참여하면, 이곳에서 팀의 Agent를 관리할 수 있어요." icon={<Icon name="team" size={28} />} /><button type="button" className="button button-primary" onClick={() => setView("teams")}>팀 관리로 이동<Icon name="arrow" size={15} /></button></section>}
+                : <section className="workspace-selection-empty"><EmptyState title={teamsLoading ? "팀 정보 불러오는 중" : "참여 중인 팀 없음"} description="팀을 만들거나 초대 코드로 참여하면, 이곳에서 팀의 Agent를 관리할 수 있어요." icon={<Icon name="team" size={28} />} /><button type="button" className="button button-primary" onClick={() => setView("teams")}>팀 관리로 이동<Icon name="arrow" size={15} /></button></section>}
             </div>}
             {view === "conversation" && (selectedTeamId !== null && selectedTaskId !== null
               ? <TaskConversationView userId={user.userId} teamId={selectedTeamId} taskId={selectedTaskId} autoRefresh={autoRefresh} onError={onError} onBack={() => setView("workspace")} />
-              : <section className="workspace-selection-empty"><EmptyState title="확인할 대화를 선택해주세요" description="왼쪽 채팅 목록에서 현재 팀의 작업 대화 기록을 열 수 있어요." icon={<Icon name="book" size={28} />} /></section>)}
+              : <section className="workspace-selection-empty"><EmptyState title="대화 선택" description="왼쪽 채팅 목록에서 현재 팀의 작업 대화 기록을 열 수 있어요." icon={<Icon name="book" size={28} />} /></section>)}
             {view === "guide" && <GuidePage />}
             {view === "settings" && <WorkspaceSettingsView user={user} autoRefresh={autoRefresh} onAutoRefreshChange={changeAutoRefresh} loggingOut={loggingOut} onLogout={() => { void logout(); }} onGuide={() => setView("guide")} />}
             {view === "design" && <WorkspaceDesignView />}
-            <footer className="page-footer"><span>DevLink Workspace</span><span>팀 · Agent · 대화 기록</span></footer>
         </DashboardLayout>
       ),
     }} />

@@ -5,7 +5,39 @@
   "private": true,
   "main": "main.js",
   "scripts": {
-    "dev": "electron ."
+    "dev": "electron .",
+    "test": "node --test tests/*.test.cjs",
+    "verify:connection": "node scripts/run-verification.cjs",
+    "verify:installer": "node scripts/run-verification.cjs --installer",
+    "prepare:vendor": "node scripts/prepare-vendor.cjs",
+    "dist:win": "npm run prepare:vendor && electron-builder --win nsis --x64"
+  },
+  "build": {
+    "appId": "kr.ai.devlink.desktop",
+    "artifactName": "DevLink-Setup-${version}.${ext}",
+    "asar": true,
+    "files": ["*.js", "offline.html", "assets/**/*", "package.json"],
+    "win": {
+      "icon": "assets/devlink.ico",
+      "executableName": "DevLinkDesktop",
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "runAfterFinish": true,
+      "installerLanguages": ["ko_KR"],
+      "include": "scripts/installer.nsh",
+      "deleteAppDataOnUninstall": false
+    },
+    "extraResources": [
+      { "from": "vendor/bin", "to": "bin" },
+      { "from": "vendor/node", "to": "node" },
+      { "from": "maintenance", "to": "maintenance" }
+    ]
   },
   "devDependencies": {
     "electron": "45.2.3",

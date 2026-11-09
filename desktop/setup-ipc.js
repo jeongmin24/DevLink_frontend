@@ -3,6 +3,9 @@ const { randomUUID } = require("node:crypto");
 const { realpath, stat } = require("node:fs/promises");
 const path = require("node:path");
 const { checkSession, detectTools, loadDevelopmentPaths, runSetup, runStatus } = require("./setup-runner");
+const { listTeamProfiles, prepareAccountProfile, resolveProjectPaths } = require("./setup-profiles");
+
+const notReady = { exitCode: 0, result: { data: { connection: { setupReady: false } } } };
 
 function samePath(actual, expected) {
   if (typeof actual !== "string" || !path.isAbsolute(actual)) return false;
@@ -23,7 +26,35 @@ function validId(value) {
   return Number.isSafeInteger(value) && value > 0;
 }
 
-function registerSetupHandlers(window, webOrigin) {
+function validateAccount(account) {
+  if (!validId(account?.userId) || !validId(account?.teamId) || typeof account?.email !== "string"
+    || !/^[^\s@]+@[^\s@]+$/.test(account.email) || account.email.length > 255) {
+    throw new Error("현재 로그인 계정과 팀을 확인해주세요.");
+  }
+}
+
+function agentMetadata(value = {}) {
+  if (!value || typeof value !== "object" || Array.isArray(value)
+    || Object.keys(value).some((key) => !["part", "roles"].includes(key))) {
+    throw new Error("담당 파트와 역할 태그를 확인해주세요.");
+  }
+  const part = value.part === undefined ? "OTHER" : value.part;
+  const roles = value.roles === undefined ? [] : value.roles;
+  if (!["FRONTEND", "BACKEND", "INFRA", "OTHER"].includes(part)
+    || !Array.isArray(roles) || roles.length > 10
+    || roles.some((role) => typeof role !== "string" || role.length > 64
+      || /^[\u0009-\u000d\u001c-\u0020\u1680\u2000-\u2006\u2008-\u200a\u2028\u2029\u205f\u3000]*$/.test(role))) {
+    throw new Error("담당 파트 또는 역할 태그가 올바르지 않습니다. 태그는 64자 이내로 최대 10개 입력해주세요.");
+  }
+  return {
+    ...(value.part === undefined ? {} : { part }),
+    ...(value.roles === undefined ? {} : {
+      roles: [...new Set(roles.map((role) => role.replace(/^[\u0000-\u0020]+|[\u0000-\u0020]+$/g, "")))],
+    }),
+  };
+}
+
+function registerSetupHandlers(window, webOrigin, loadPaths = loadDevelopmentPaths) {
   let selection;
   let busy = false;
   let documentVersion = 0;
@@ -61,12 +92,29 @@ function registerSetupHandlers(window, webOrigin) {
   });
   window.on("close", (event) => { if (busy) event.preventDefault(); });
 
-  handle("status", () => runStatus());
-  handle("pickFolder", (frame, account) => exclusive(async () => {
-    if (!validId(account?.userId) || !validId(account?.teamId) || typeof account?.email !== "string"
-      || !/^[^\s@]+@[^\s@]+$/.test(account.email) || account.email.length > 255) {
-      throw new Error("현재 로그인 계정과 팀을 확인해주세요.");
+  handle("status", async (_frame, account) => {
+    validateAccount(account);
+    let firstError;
+    // 현재 팀에 연결된 프로젝트 중 하나라도 준비되면 연결됨
+    for (const paths of await listTeamProfiles(await loadPaths(), account)) {
+      let status;
+      try {
+        status = await runStatus(paths);
+      } catch (error) {
+        firstError ??= error;
+        continue;
+      }
+      const data = status.result?.data;
+      if (status.exitCode === 0 && data?.connection?.setupReady === true
+        && data.userId === String(account.userId) && data.teamId === String(account.teamId)) {
+        return status;
+      }
     }
+    if (firstError) throw firstError;
+    return notReady;
+  });
+  handle("pickFolder", (frame, account) => exclusive(async () => {
+    validateAccount(account);
 
     selection = undefined;
     const version = documentVersion;
@@ -81,18 +129,20 @@ function registerSetupHandlers(window, webOrigin) {
     if (!name || name.length > 100 || !(await stat(project)).isDirectory()) {
       throw new Error("이름이 1~100자인 프로젝트 폴더를 선택해주세요.");
     }
-    const tools = await detectTools(await loadDevelopmentPaths());
+    const paths = await resolveProjectPaths(await loadPaths(), account, project);
+    const tools = await detectTools(paths);
     if (version !== documentVersion) return null;
 
     selection = {
-      id: randomUUID(), project, name, tools,
+      id: randomUUID(), project, name, tools, paths,
       userId: String(account.userId), teamId: String(account.teamId), email: account.email,
     };
     return { id: selection.id, name, tools };
   }));
 
-  handle("setup", (frame, id, tool, password) => exclusive(async () => {
+  handle("setup", (frame, id, tool, password, metadata) => exclusive(async () => {
     const current = requireSelection(id);
+    const agent = agentMetadata(metadata === undefined ? current.agentMetadata : metadata);
     if (!current.tools.includes(tool) || (current.tool && current.tool !== tool)) {
       throw new Error("감지된 AI 도구를 선택해주세요. 도구를 바꾸려면 폴더를 다시 선택해주세요.");
     }
@@ -101,14 +151,20 @@ function registerSetupHandlers(window, webOrigin) {
       throw new Error("비밀번호를 확인해주세요. 비밀번호는 UTF-8 기준 72바이트 이하여야 합니다.");
     }
 
+    current.agentMetadata = agent;
     current.tool = tool;
     current.targetPath = tool === "claude-code"
       ? path.join(current.project, ".mcp.json")
       : path.join(current.project, ".codex", "config.toml");
-    const paths = await loadDevelopmentPaths();
+    const paths = await resolveProjectPaths(await loadPaths(), current, current.project);
+    if (!samePath(paths.config, current.paths.config) || paths.serverUrl !== current.paths.serverUrl) {
+      throw new Error("서버 또는 연결 프로필이 변경됐습니다. 프로젝트 폴더를 다시 선택해주세요.");
+    }
+    await prepareAccountProfile(paths);
     if (password === undefined) {
       const session = await checkSession(paths);
-      if (!session || ["logged_out", "expired"].includes(session.state)) {
+      if (!session || ["logged_out", "expired"].includes(session.state)
+        || (session.authenticated === true && String(session.user?.userId) !== current.userId)) {
         current.needsPassword = true;
         return { state: "password" };
       }
@@ -126,8 +182,8 @@ function registerSetupHandlers(window, webOrigin) {
       team: { id: current.teamId },
       project: { path: current.project, name: current.name },
       tool: { type: tool },
-      agent: { action: "create", name: current.name },
-      mcp: { mode: "apply", targetPath: current.targetPath },
+      agent: { action: "create", name: current.name, ...agent },
+      mcp: { mode: "replace", targetPath: current.targetPath },
     };
     const result = await runSetup(paths, input, password, (progress) => {
       if (selection !== current || frame.detached || frame.origin !== webOrigin) return;
@@ -153,12 +209,31 @@ function registerSetupHandlers(window, webOrigin) {
       return { state: "manual", targetPath: current.targetPath, snippet: manual.snippet };
     }
 
+    if (error?.code === "SETUP_PROFILE_CONFLICT") {
+      return {
+        state: "error",
+        code: error.code,
+        message: "이 폴더는 이 PC에서 다른 AI 도구나 설정으로 이미 연결돼 있습니다. 처음 연결한 AI 도구로 다시 시도해주세요.",
+      };
+    }
+
+    if (error?.code === "SETUP_AGENT_BINDING_CONFLICT") {
+      // 담당 정보를 보내지 않았으면 이름·도구 등 다른 연결 정보 충돌
+      return {
+        state: "error",
+        code: error.code,
+        message: Object.keys(agent).length > 0
+          ? "이 폴더에 연결된 기존 Agent 정보와 입력한 내용이 다릅니다. 기존 Agent의 담당 파트·역할 태그는 이 화면에서 바꿀 수 없으니 해당 항목을 비워 두고 다시 연결해주세요."
+          : "이 폴더에 연결된 기존 Agent 정보가 현재 연결 정보와 다릅니다. Agent 목록에서 이름과 AI 도구를 확인하거나 폴더를 다시 선택해주세요.",
+      };
+    }
+
     return { state: "error", code: error?.code, message: error?.message ?? "프로젝트를 연결하지 못했습니다." };
   }));
 
   handle("checkSetup", (_frame, id) => exclusive(async () => {
     const current = requireSelection(id);
-    const paths = await loadDevelopmentPaths();
+    const paths = await resolveProjectPaths(await loadPaths(), current, current.project);
     if (!current.manualConfig || !samePath(paths.config, current.manualConfig.config)
       || paths.serverUrl !== current.manualConfig.serverUrl) {
       throw new Error("같은 테스트 프로필로 연결을 다시 시작해주세요.");

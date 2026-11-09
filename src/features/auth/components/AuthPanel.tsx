@@ -8,6 +8,28 @@ import type { ConnectionState } from "../hooks/useSession";
 import { Icon } from "../../../components/ui";
 import PageTitle from "../../../components/common/PageTitle";
 
+const rememberedEmailKey = "devlink:remembered-email";
+
+function readRememberedEmail() {
+  try {
+    return localStorage.getItem(rememberedEmailKey) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function saveRememberedEmail(email: string) {
+  try {
+    if (email) {
+      localStorage.setItem(rememberedEmailKey, email);
+    } else {
+      localStorage.removeItem(rememberedEmailKey);
+    }
+  } catch {
+    return;
+  }
+}
+
 export default function AuthPanel({
   onAuthenticated,
   onNotice,
@@ -21,7 +43,8 @@ export default function AuthPanel({
 }) {
   const id = useId();
   const [mode, setMode] = useState<"login" | "signup">("login");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(readRememberedEmail);
+  const [rememberEmail, setRememberEmail] = useState(() => Boolean(readRememberedEmail()));
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
@@ -61,6 +84,7 @@ export default function AuthPanel({
         onNotice("회원가입이 완료됐습니다. 같은 이메일로 로그인해주세요.");
       } else {
         const user = await login.mutateAsync({ email: email.trim(), password });
+        saveRememberedEmail(rememberEmail ? email.trim().toLowerCase() : "");
         setPassword("");
         await onAuthenticated(user);
       }
@@ -168,6 +192,22 @@ export default function AuthPanel({
                 </button>
               </div>
             </div>
+            {mode === "login" && (
+              <label className="auth-remember-email" htmlFor={`${id}-remember-email`}>
+                <input
+                  id={`${id}-remember-email`}
+                  type="checkbox"
+                  checked={rememberEmail}
+                  onChange={(event) => {
+                    const checked = event.currentTarget.checked;
+                    setRememberEmail(checked);
+                    if (!checked) saveRememberedEmail("");
+                  }}
+                  disabled={busy}
+                />
+                <span>이메일 저장</span>
+              </label>
+            )}
             {error && (
               <p className="inline-error" role="alert">
                 {error}

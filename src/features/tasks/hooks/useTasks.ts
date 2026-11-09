@@ -1,6 +1,8 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@/lib/apiClient";
 import { getAllTeamTasks, getTaskUpdates, taskApi } from "../api/taskApi";
+import type { TaskListItem } from "../types";
 import { compareSequences } from "../utils/taskPresentation";
 
 export const taskKeys = {
@@ -33,7 +35,8 @@ export function useTaskDetail(
   taskId: number | null,
   autoRefresh = true,
 ) {
-  return useQuery({
+  const client = useQueryClient();
+  const query = useQuery({
     queryKey: taskKeys.detail(userId, teamId, taskId),
     queryFn: ({ signal }) => taskApi.getTaskDetail(teamId!, taskId!, signal),
     enabled: teamId !== null && taskId !== null,
@@ -42,6 +45,19 @@ export function useTaskDetail(
     refetchOnReconnect: autoRefresh,
     refetchInterval: autoRefresh ? 20_000 : false,
   });
+
+  useEffect(() => {
+    const detail = query.data;
+    if (!detail || query.isError) return;
+    const listKey = taskKeys.list(userId, teamId);
+    const listState = client.getQueryState<TaskListItem[]>(listKey);
+    if (!listState?.data || listState.dataUpdatedAt > query.dataUpdatedAt) return;
+    client.setQueryData<TaskListItem[]>(listKey, (tasks) => tasks?.map((task) => task.taskId === detail.taskId
+      ? { ...task, status: detail.status, taskSummary: detail.taskSummary }
+      : task), { updatedAt: listState.dataUpdatedAt });
+  }, [client, userId, teamId, query.data, query.dataUpdatedAt, query.isError]);
+
+  return query;
 }
 
 export function useTaskHistory(

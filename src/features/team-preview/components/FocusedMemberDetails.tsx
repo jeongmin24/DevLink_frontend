@@ -6,15 +6,12 @@ import '../styles/FocusedMemberDetails.css'
 
 interface FocusedMemberDetailsProps {
   member: PreviewMember
-  teamName: string
   color: string
   onClose: () => void
   onOpenDashboard: () => void
 }
 
-const toolNames = { Codex: '코덱스', 'Claude Code': '클로드 코드' }
-
-export default function FocusedMemberDetails({ member, teamName, color, onClose, onOpenDashboard }: FocusedMemberDetailsProps) {
+export default function FocusedMemberDetails({ member, color, onClose, onOpenDashboard }: FocusedMemberDetailsProps) {
   const id = useId()
   const scrollBody = useRef<HTMLDivElement>(null)
   const agentSection = useRef<HTMLElement>(null)
@@ -26,8 +23,10 @@ export default function FocusedMemberDetails({ member, teamName, color, onClose,
     const body = scrollBody.current
     const section = agentSection.current
     if (!body || !section) return
-    const top = body.scrollTop + section.getBoundingClientRect().top - body.getBoundingClientRect().top - 4
-    body.scrollTo({ top, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+    const scrollContainer = getComputedStyle(body).overflowY === "visible" ? body.parentElement : body;
+    if (!scrollContainer) return;
+    const top = scrollContainer.scrollTop + section.getBoundingClientRect().top - scrollContainer.getBoundingClientRect().top - 4;
+    scrollContainer.scrollTo({ top, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   }
 
   return <aside className="itp-selection itp-member-inspector" style={{ '--itp-member-color': color } as CSSProperties} aria-labelledby={`${id}-name`}>
@@ -38,31 +37,24 @@ export default function FocusedMemberDetails({ member, teamName, color, onClose,
     </header>
 
     <div className="imi-scroll" ref={scrollBody} tabIndex={0} role="region" aria-label={`${member.name}의 팀원 및 에이전트 상세 정보`}>
-      <section className="imi-member-section" aria-labelledby={`${id}-profile`}>
-        <h3 id={`${id}-profile`}>팀원 정보</h3>
-        <dl className="imi-member-meta">
-          <div><dt>소속 팀</dt><dd>{teamName}</dd></div>
-          <div><dt>닉네임</dt><dd>{member.nickname || member.name}</dd></div>
-          <div><dt>팀 참여일</dt><dd>{member.joinedAt}</dd></div>
-          <div><dt>팀 권한</dt><dd>{role}</dd></div>
-        </dl>
-        <div className="imi-summary" aria-label="에이전트 및 프로젝트 현황">
-          <div><strong>{member.agents.length}<small>개</small></strong><span>등록 에이전트</span></div>
-          <div><strong>{onlineCount}<small>개</small></strong><span>온라인 에이전트</span></div>
-          <div><strong>{projectCount}<small>개</small></strong><span>참여 프로젝트</span></div>
-        </div>
-      </section>
+      <div className="imi-summary" aria-label="에이전트 및 프로젝트 현황">
+        <div><strong>{member.agents.length}<small>개</small></strong><span>등록 에이전트</span></div>
+        <div><strong>{onlineCount}<small>개</small></strong><span>온라인 에이전트</span></div>
+        <div><strong>{projectCount}<small>개</small></strong><span>참여 프로젝트</span></div>
+      </div>
 
       <section className="imi-agent-section" id={`${id}-agent-section`} ref={agentSection} aria-labelledby={`${id}-agents`}>
         <div className="imi-section-heading"><h3 id={`${id}-agents`}>에이전트 정보</h3><span>{member.agents.length}개</span></div>
         <div className="imi-agent-list">
           {member.agents.length === 0 ? <p className="imi-empty">등록된 에이전트가 없습니다.</p> : member.agents.map((agent) => <article className="imi-agent-card" key={agent.id} aria-labelledby={`${id}-${agent.id}`}>
-            <header className="imi-agent-heading"><span className="imi-agent-icon" aria-hidden="true"><Icon name="agent" size={25} /></span><h4 id={`${id}-${agent.id}`}>{agent.name}</h4><span className={`imi-status ${agent.online ? 'is-online' : ''}`}><i />{agent.online ? '온라인' : '오프라인'}</span></header>
-            <dl className="imi-agent-meta"><div><dt>사용 도구</dt><dd>{toolNames[agent.tool]}</dd></div><div><dt>프로젝트</dt><dd>{agent.project}</dd></div></dl>
-            <div className="imi-agent-description"><h5>담당 역할</h5><p>{agent.description.trim() || '등록된 역할 설명이 없습니다.'}</p></div>
+            <header className="imi-agent-heading">
+              <span className="imi-tool-badge" aria-label={`사용 도구 ${agent.tool}`}>{agent.tool}</span>
+              <h4 id={`${id}-${agent.id}`}>{agent.name}</h4>
+              <span className={`imi-status ${agent.online ? 'is-online' : ''}`}><i />{agent.online ? '온라인' : '오프라인'}</span>
+            </header>
+            <p className="imi-agent-description" aria-label="담당 역할">{agent.description.trim() || "등록된 역할 설명이 없습니다."}</p>
           </article>)}
         </div>
-        <p className="imi-status-note"><Icon name="shield" size={16} /><span>연결 상태는 에이전트 기준으로 표시됩니다.</span></p>
       </section>
     </div>
 

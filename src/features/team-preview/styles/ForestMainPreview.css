@@ -11,7 +11,7 @@
   min-height: calc(100svh - var(--design-toolbar-height, 84px));
   color: var(--fvp-ink);
   background: var(--fvp-paper);
-  font-family: 'Pretendard', 'Inter', 'Segoe UI', 'Malgun Gothic', sans-serif;
+  font-family: var(--font-sans);
   font-size: 13px;
   line-height: 1.6;
 }

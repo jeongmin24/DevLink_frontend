@@ -1,0 +1,631 @@
+.onboarding-page {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  height: 100svh;
+  min-height: 100svh;
+  background: var(--workspace-surface);
+}
+
+.onboarding-header,
+.onboarding-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  max-width: 1440px;
+  margin: 0 auto;
+  width: 100%;
+  padding: clamp(16px, 3svh, 28px) 48px;
+}
+
+.onboarding-account {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--workspace-muted);
+  font-size: 13px;
+}
+
+.onboarding-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 390px) minmax(0, 1fr);
+  max-width: 1440px;
+  width: 100%;
+  min-height: 0;
+  margin: 10px auto 0;
+  padding: 0 28px;
+  gap: clamp(24px, 3vw, 48px);
+}
+
+.onboarding-story {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-height: 0;
+  overflow-y: auto;
+  padding: clamp(20px, 4svh, 40px) 34px 16px;
+  border: 1px solid var(--workspace-divider);
+  border-radius: 26px;
+  background-color: color-mix(
+    in srgb,
+    var(--workspace-accent) 42%,
+    var(--workspace-surface)
+  );
+  background-image:
+    linear-gradient(#ffffff70 1px, transparent 1px),
+    linear-gradient(90deg, #ffffff70 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+.onboarding-story h1 {
+  margin: 0 0 14px;
+  font-size: clamp(28px, 4.8svh, 38px);
+  font-weight: 650;
+  letter-spacing: -1.6px;
+  line-height: 1.35;
+}
+
+.onboarding-story-copy > p:last-child {
+  margin: 0;
+  color: var(--workspace-muted);
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.onboarding-steps {
+  display: grid;
+  gap: clamp(10px, 2.5svh, 22px);
+  padding: 0;
+  margin: clamp(16px, 4svh, 36px) 0 0;
+  list-style: none;
+}
+
+.onboarding-steps li {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  color: var(--workspace-muted);
+}
+
+.onboarding-step-number {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 35px;
+  height: 35px;
+  border: 1px solid var(--workspace-border);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--workspace-surface) 65%, transparent);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.onboarding-steps strong {
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.onboarding-steps p {
+  margin: 3px 0 0;
+  font-size: 12px;
+}
+
+.onboarding-steps .is-current {
+  color: var(--color-ink);
+}
+
+.onboarding-steps .is-current .onboarding-step-number {
+  color: var(--workspace-surface);
+  background: var(--workspace-action);
+  border-color: var(--workspace-action);
+}
+
+.onboarding-steps .is-complete .onboarding-step-number {
+  color: var(--workspace-action);
+  background: var(--workspace-accent);
+}
+
+.onboarding-mascot {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  justify-items: center;
+  min-height: 0;
+  padding-top: 14px;
+}
+
+.onboarding-mascot img {
+  width: min(100%, 224px);
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+}
+
+.onboarding-mascot span {
+  color: var(--workspace-muted);
+  font-size: 11px;
+  letter-spacing: 0.3px;
+}
+
+.onboarding-main {
+  align-self: center;
+  width: 100%;
+  max-height: 100%;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  padding: clamp(16px, 3svh, 28px) 8px;
+  min-width: 0;
+}
+
+.onboarding-main-heading {
+  margin-bottom: clamp(18px, 3.5svh, 28px);
+}
+
+.onboarding-step-caption {
+  display: block;
+  margin-bottom: 12px;
+  color: var(--workspace-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+}
+
+.onboarding-main-heading h2 {
+  margin: 0 0 10px;
+  font-size: clamp(24px, 2.5vw, 30px);
+  font-weight: 650;
+  letter-spacing: -1px;
+  line-height: 1.4;
+  word-break: keep-all;
+}
+
+.onboarding-main-heading > p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--workspace-muted);
+  word-break: keep-all;
+}
+
+.onboarding-team-content,
+.onboarding-team-form,
+.onboarding-existing-teams {
+  display: grid;
+  gap: 16px;
+}
+
+.onboarding-label {
+  color: var(--workspace-muted);
+  font-size: 13px;
+  margin: 0;
+}
+
+.onboarding-team-choices,
+.project-connect-tools {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.onboarding-choice,
+.project-connect-tool {
+  display: flex;
+  align-items: flex-start;
+  flex-direction: column;
+  gap: 12px;
+  padding: 21px;
+  color: var(--color-ink);
+  background: var(--workspace-surface);
+  border: 1px solid var(--workspace-border);
+  border-radius: 12px;
+  text-align: left;
+  transition:
+    background 0.15s,
+    border-color 0.15s;
+}
+
+.onboarding-choice:hover,
+.onboarding-choice.is-selected,
+.project-connect-tool:hover,
+.project-connect-tool.is-selected {
+  border-color: var(--workspace-focus);
+  background: color-mix(
+    in srgb,
+    var(--workspace-accent) 24%,
+    var(--workspace-surface)
+  );
+}
+
+.onboarding-choice strong,
+.project-connect-tool strong {
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.onboarding-choice > span:last-child,
+.project-connect-tool > span {
+  color: var(--workspace-muted);
+  font-size: 12px;
+}
+
+.onboarding-option-icon,
+.project-connect-symbol {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  background: color-mix(
+    in srgb,
+    var(--workspace-accent) 50%,
+    var(--workspace-surface)
+  );
+  border-radius: 12px;
+  color: var(--workspace-action);
+}
+
+.project-connect-tool-selection {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.project-connect-tool-selection legend {
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.onboarding-team-option,
+.onboarding-selected-team {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  width: 100%;
+  padding: 15px 17px;
+  color: var(--color-ink);
+  background: var(--color-workspace);
+  border: 1px solid var(--workspace-divider);
+  border-radius: 12px;
+  text-align: left;
+}
+
+.onboarding-team-option > span:nth-child(2),
+.onboarding-selected-team > div {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 3px;
+}
+
+.onboarding-team-option strong,
+.onboarding-selected-team strong {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.onboarding-team-option small,
+.onboarding-selected-team small {
+  color: var(--workspace-muted);
+  font-size: 12px;
+}
+
+.onboarding-selected-team {
+  margin-bottom: clamp(16px, 3svh, 24px);
+}
+
+.onboarding-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.onboarding-skip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--workspace-divider);
+  padding-top: 21px;
+  margin-top: clamp(20px, 3.5svh, 30px);
+}
+
+.onboarding-skip p,
+.onboarding-footer {
+  color: var(--workspace-muted);
+  font-size: 12px;
+}
+
+.onboarding-skip p {
+  margin: 0;
+}
+
+.onboarding-skip .text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.onboarding-invite {
+  margin-top: 24px;
+  color: var(--workspace-muted);
+  font-size: 13px;
+}
+
+.onboarding-invite-content {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.onboarding-invite .field {
+  flex: 1;
+  min-width: 0;
+}
+
+.onboarding-browser-help {
+  display: grid;
+  justify-items: start;
+  gap: 14px;
+  padding: 24px;
+  border: 1px solid var(--workspace-divider);
+  border-radius: 12px;
+}
+
+.onboarding-browser-help h3,
+.onboarding-browser-help p {
+  margin: 0;
+}
+
+.onboarding-browser-help p {
+  color: var(--workspace-muted);
+  font-size: 14px;
+}
+
+.project-connect-content {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+
+.onboarding-page .project-connect-content {
+  gap: clamp(12px, 2svh, 18px);
+}
+
+.onboarding-page .project-connect-content > p,
+.onboarding-page .project-connect-content .modal-footer {
+  margin: 0;
+}
+
+.onboarding-page .project-connect-folder {
+  padding-block: clamp(16px, 3svh, 30px);
+}
+
+.project-connect-selection {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  padding: 11px 14px;
+  background: var(--color-workspace);
+  border-radius: 9px;
+  margin: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.project-connect-selection > span {
+  color: var(--workspace-muted);
+}
+
+.project-connect-folder,
+.project-connect-complete {
+  display: grid;
+  justify-items: center;
+  gap: 13px;
+  padding: 30px 16px;
+  border: 1px dashed var(--workspace-border);
+  border-radius: 12px;
+  text-align: center;
+}
+
+.project-connect-folder h3,
+.project-connect-complete h3 {
+  font-size: 17px;
+  font-weight: 650;
+  margin: 0;
+  word-break: keep-all;
+}
+
+.project-connect-folder p,
+.project-connect-complete p {
+  font-size: 13px;
+  color: var(--workspace-muted);
+  margin: 0;
+}
+
+.project-connect-complete {
+  border-style: solid;
+  border-color: var(--workspace-divider);
+  background: color-mix(
+    in srgb,
+    var(--workspace-accent) 23%,
+    var(--workspace-surface)
+  );
+}
+
+.project-connect-progress {
+  display: grid;
+  gap: 16px;
+  padding: 8px 0;
+  margin: 0;
+  list-style: none;
+}
+
+.project-connect-progress li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.project-connect-progress .field-hint {
+  margin-left: auto;
+}
+
+.project-connect-step {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--workspace-divider);
+  border-radius: 50%;
+  color: var(--workspace-muted);
+  font-size: 12px;
+}
+
+.project-connect-progress .is-current .project-connect-step {
+  background: var(--workspace-action);
+  color: var(--workspace-surface);
+}
+
+.project-connect-progress .is-complete .project-connect-step {
+  background: var(--workspace-accent);
+  color: var(--workspace-action);
+}
+
+.project-connect-summary {
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+  border-radius: 9px;
+  background: var(--color-workspace);
+  margin: 0;
+}
+
+.project-connect-summary > div {
+  display: grid;
+  grid-template-columns: 80px minmax(0, 1fr);
+  gap: 14px;
+}
+
+.project-connect-summary dt {
+  color: var(--workspace-muted);
+  font-size: 13px;
+}
+
+.project-connect-summary dd {
+  margin: 0;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .onboarding-layout {
+    grid-template-columns: minmax(235px, 290px) minmax(0, 1fr);
+    gap: 32px;
+  }
+  .onboarding-story {
+    padding: 30px 24px 16px;
+  }
+  .onboarding-story h1 {
+    font-size: 32px;
+  }
+  .onboarding-header,
+  .onboarding-footer {
+    padding: clamp(16px, 3svh, 24px) 28px;
+  }
+  .onboarding-choice,
+  .project-connect-tool {
+    padding: 17px;
+  }
+}
+
+@media (min-width: 681px) and (max-height: 600px) {
+  .onboarding-story h1 {
+    font-size: 26px;
+  }
+  .onboarding-story-copy > p:last-child,
+  .onboarding-mascot {
+    display: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .onboarding-page {
+    height: auto;
+    grid-template-rows: auto auto auto;
+  }
+  .onboarding-header {
+    padding: 22px 20px;
+  }
+  .onboarding-account > span {
+    display: none;
+  }
+  .onboarding-layout {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0 20px;
+    gap: 12px;
+    min-height: auto;
+  }
+  .onboarding-story {
+    display: block;
+    overflow: visible;
+    padding: 22px;
+    border-radius: 18px;
+  }
+  .onboarding-story h1 {
+    font-size: 27px;
+  }
+  .onboarding-story h1 br {
+    display: none;
+  }
+  .onboarding-story-copy > p:last-child,
+  .onboarding-mascot,
+  .onboarding-steps p {
+    display: none;
+  }
+  .onboarding-steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .onboarding-steps li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .onboarding-steps strong {
+    font-size: 13px;
+  }
+  .onboarding-main {
+    max-width: none;
+    max-height: none;
+    overflow: visible;
+    scrollbar-gutter: auto;
+    padding: 22px 0;
+  }
+  .onboarding-footer {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 400px) {
+  .onboarding-team-choices,
+  .project-connect-tools {
+    gap: 10px;
+  }
+  .onboarding-choice,
+  .project-connect-tool {
+    padding: 15px 12px;
+  }
+  .onboarding-choice > span:last-child {
+    display: none;
+  }
+  .onboarding-skip {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

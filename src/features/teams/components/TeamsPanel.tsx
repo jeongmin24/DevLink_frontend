@@ -168,9 +168,7 @@ export default function TeamsPanel({
     <section className="panel team-panel" aria-labelledby={`${fieldId}-title`}>
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">TEAM WORKSPACE</p>
-          <h2 className="section-title" id={`${fieldId}-title`}>팀 관리</h2>
-          <p className="muted">팀을 만들거나 초대 코드로 참여하세요.</p>
+          <h2 className="section-title" id={`${fieldId}-title`}>참여 팀</h2>
         </div>
         <div className="section-actions">
           <button className="button button-secondary" type="button" onClick={openJoin} disabled={pending}>
@@ -197,14 +195,15 @@ export default function TeamsPanel({
             ))}
           </select>
           <button
-            className="icon-button"
+            className="icon-button refresh-button"
             type="button"
             onClick={onRefresh}
             aria-label="팀 정보 새로고침"
             title="팀 정보 새로고침"
+            aria-busy={loading}
             disabled={loading || pending || !selectedTeam}
           >
-            <Icon name="refresh" size={17} />
+            <Icon name="refresh" size={18} />
           </button>
         </div>
       )}
@@ -214,7 +213,7 @@ export default function TeamsPanel({
       ) : !selectedTeam ? (
         <EmptyState
           icon={<Icon name="team" size={30} />}
-          title="아직 참여한 팀이 없어요"
+          title="참여 중인 팀 없음"
           description="첫 팀을 만들거나 팀원에게 받은 초대 코드로 참여해보세요."
         />
       ) : (
@@ -363,7 +362,7 @@ export default function TeamsPanel({
 
       {dialog?.kind === 'invite' && (
         <Modal
-          title={dialog.created ? '팀을 만들었습니다' : '팀 초대 코드'}
+          title={dialog.created ? "팀 생성 완료" : "팀 초대 코드"}
           description={`${dialog.team.name} 팀에 초대할 사람에게 코드를 공유해주세요.`}
           onClose={closeDialog}
           busy={pending}

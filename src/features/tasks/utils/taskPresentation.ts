@@ -1,7 +1,7 @@
 import type { TaskEvent, TaskHistory, TaskListItem, TaskStatus } from "../types";
 
 export const taskStatusLabels: Record<TaskStatus, string> = {
-  PENDING: "대기 중",
+  PENDING: "수락 대기",
   IN_PROGRESS: "진행 중",
   COMPLETED: "완료",
   FAILED: "실패",
@@ -10,7 +10,22 @@ export const taskStatusLabels: Record<TaskStatus, string> = {
 
 export function taskTitle(task: Pick<TaskListItem, "taskId" | "taskSummary"> | null | undefined): string {
   if (!task) return "작업 기록";
-  return task.taskSummary?.trim() || `작업 #${task.taskId}`;
+  return task.taskSummary?.trim() || `${task.taskId}번 세션`;
+}
+
+export function parseTaskPrompt(prompt: string): { title: string; description: string } {
+  const fallback = { title: "", description: prompt };
+  try {
+    const parsed: unknown = JSON.parse(prompt);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return fallback;
+    const fields = parsed as Record<string, unknown>;
+    return {
+      title: typeof fields.title === "string" ? fields.title.trim() : "",
+      description: typeof fields.description === "string" ? fields.description : "",
+    };
+  } catch {
+    return fallback;
+  }
 }
 
 const timeOptions: Intl.DateTimeFormatOptions = {

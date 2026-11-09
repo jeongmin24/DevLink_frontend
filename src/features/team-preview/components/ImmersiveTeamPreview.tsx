@@ -4,7 +4,6 @@ import type { Team } from "@/features/teams/types";
 import type { PreviewMember } from "../data/previewData";
 import { Icon } from "@/components/ui";
 import PageTitle from "@/components/common/PageTitle";
-import TeamSpaceLink from "@/components/common/TeamSpaceLink";
 import { copyText } from "@/utils";
 import ImmersiveTeamScene from './ImmersiveTeamScene'
 import FocusedMemberDetails from './FocusedMemberDetails'
@@ -15,17 +14,14 @@ import '../styles/ImmersiveExperience.css'
 import '../styles/RefinedTeamPreview.css'
 
 function MotionIcon({ paused }: { paused: boolean }) {
-  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paused ? <path d="m9 5 11 7-11 7V5Z" /> : <><path d="M8 5v14M16 5v14" /></>}</svg>
+  return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paused ? <path d="m9 5 11 7-11 7V5Z" /> : <><path d="M8 5v14M16 5v14" /></>}</svg>
 }
 
-function SpreadIcon() {
-  return <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5M4 4l5 5M20 4l-5 5M20 20l-5-5M4 20l5-5" /></svg>
-}
 
 function TopViewIcon() {
   return (
     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M12 3v10m-4-4 4 4 4-4M5 15v5h14v-5" />
+      <rect x="4" y="4" width="16" height="16" rx="4" /><path d="M4 9h16M9 4v16" /><circle cx="14.5" cy="14.5" r="2" />
     </svg>
   );
 }
@@ -108,6 +104,7 @@ function TeamPicker({ teamName, teams, selectedTeamId, onSelectTeam }: {
   return (
     <div className="itp-team-picker" ref={picker} onKeyDown={handleKeyDown}
       onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}>
+      <span className="itp-team-picker-label">현재 팀</span>
       <h1>
         {teams.length === 0 ? teamName : (
           <button className="itp-team-picker-trigger" type="button" ref={trigger} aria-expanded={open}
@@ -164,7 +161,6 @@ export default function ImmersiveTeamPreview({ workspace }: { workspace?: LiveWo
   const [teamId, setTeamId] = useState(immersivePreviewTeams[0].id)
   const [selection, setSelection] = useState<{ teamId: string; memberId: string; focused: boolean } | null>(null);
   const [paused, setPaused] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches)
-  const [exploded, setExploded] = useState(false)
   const [topView, setTopView] = useState(false);
   const [availability, setAvailability] = useState<"loading" | "ready" | "unavailable">("loading");
   const [inviteOpen, setInviteOpen] = useState(false)
@@ -339,7 +335,6 @@ export default function ImmersiveTeamPreview({ workspace }: { workspace?: LiveWo
     if (id === activeTeamId) return;
     if (workspace) {
       setSelection(null);
-      setExploded(false);
       workspace.onSelectTeam(Number(id));
       return;
     }
@@ -347,7 +342,6 @@ export default function ImmersiveTeamPreview({ workspace }: { workspace?: LiveWo
     if (!nextTeam) return;
     setTeamId(id)
     setSelection(null);
-    setExploded(false)
     closeInvite()
   }
 
@@ -371,7 +365,7 @@ export default function ImmersiveTeamPreview({ workspace }: { workspace?: LiveWo
     {!workspace && <PageTitle title="3D 팀 스페이스" />}
     <section className="itp-journey" ref={journey} aria-label="3D 팀 스페이스" tabIndex={-1}>
       <div className="itp-stage-sticky" ref={stickyStage}>
-        <div className={`immersive-team-preview ${paused ? 'is-paused' : ''} ${exploded ? 'is-exploded' : ''} ${focusedMemberId ? 'is-focused' : ''} ${loadingMessage ? "is-loading" : ""}`} inert={!sceneInteractive}>
+        <div className={`immersive-team-preview ${paused ? 'is-paused' : ''} ${focusedMemberId ? 'is-focused' : ''} ${loadingMessage ? "is-loading" : ""}`} inert={!sceneInteractive}>
     <div className="itp-scene">
       {mountScene && (
         <ImmersiveTeamScene
@@ -384,7 +378,6 @@ export default function ImmersiveTeamPreview({ workspace }: { workspace?: LiveWo
           onRenderRequestChange={onRenderRequestChange}
           onSelectMember={selectMember}
           paused={paused}
-          exploded={exploded}
           topView={topView}
           onAvailabilityChange={onAvailabilityChange}
         />
@@ -412,7 +405,7 @@ export default function ImmersiveTeamPreview({ workspace }: { workspace?: LiveWo
     </div>
     <div className="itp-ambient" aria-hidden="true"><i /><i /><i /></div>
     <div className="itp-ui">
-      <header className="itp-header"><a href="/" className="itp-brand" aria-label="DevLink 워크스페이스"><span className="itp-brand-symbol">D<i /></span><span className="itp-brand-word">DevLink</span></a><div className="itp-header-actions"><TeamSpaceLink edition={2} /><TeamSpaceLink edition={3} />{focusedMemberId && <button type="button" className="itp-overview-button" onClick={returnToOverview}><Icon name="arrow" size={17} />전체 팀 보기</button>}<button className="itp-dashboard-jump" type="button" onClick={showDashboard}>대시보드<Icon name="chevron" size={16} /></button><button type="button" className="itp-icon-button" onClick={() => setPaused(!paused)} aria-label={paused ? '애니메이션 재생' : '애니메이션 일시정지'} title={paused ? '애니메이션 재생' : '애니메이션 일시정지'} aria-pressed={paused}><MotionIcon paused={paused} /></button></div></header>
+      <header className="itp-header"><a href="/" className="itp-brand" aria-label="DevLink 워크스페이스"><span className="itp-brand-symbol">D<i /></span><span className="itp-brand-word">DevLink</span></a><div className="itp-header-actions">{focusedMemberId && <button type="button" className="itp-overview-button" onClick={returnToOverview}><Icon name="arrow" size={17} />전체 팀 보기</button>}</div></header>
       {showTeamControls && <div className={`itp-main${availability === "ready" ? " itp-team-reveal" : ""}`}>
         <section className="itp-hero" key={activeTeamId}>
           <TeamPicker teamName={teamName} teams={teamOptions} selectedTeamId={activeTeamId}
@@ -421,21 +414,13 @@ export default function ImmersiveTeamPreview({ workspace }: { workspace?: LiveWo
               journey.current?.focus({ preventScroll: true });
               changeTeam(id);
             }} />
+          <div className="itp-stats" aria-label={`팀원 ${members.length}명, 에이전트 ${agentCount}개`}><div><strong>{members.length}</strong><span>팀원</span></div><span className="itp-stat-line" /><div><strong>{agentCount}</strong><span>에이전트</span></div></div>
         </section>
-        <div className="itp-stats" aria-label={`팀원 ${members.length}명, 에이전트 ${agentCount}개`}><div><strong>{members.length}</strong><span>팀원</span></div><span className="itp-stat-line" /><div><strong>{agentCount}</strong><span>에이전트</span></div></div>
-        {focusedMemberId && member && <FocusedMemberDetails key={`${activeTeamId}-${member.id}`} member={member} teamName={teamName} color={color} onClose={returnToOverview} onOpenDashboard={showDashboard} />}
+        {focusedMemberId && member && <FocusedMemberDetails key={`${activeTeamId}-${member.id}`} member={member} color={color} onClose={returnToOverview} onOpenDashboard={showDashboard} />}
         <p className="itp-sr-only">팀원을 선택하면 카메라가 이동합니다. 전체 팀 보기 버튼이나 Escape 키로 돌아올 수 있습니다. 아래로 스크롤하면 팀 대시보드가 나타납니다.</p>
-      </div>}
-      {showTeamControls && <div className={`itp-bottom${availability === "ready" ? " itp-team-reveal" : ""}`}>
-        {availability === "ready" && <div className="itp-orbit-controls">
-          <button type="button" className="itp-icon-button" onClick={() => setExploded(!exploded)} aria-label={exploded ? "모아 보기" : "펼쳐 보기"} title={exploded ? "모아 보기" : "펼쳐 보기"} aria-pressed={exploded}><SpreadIcon /></button>
-          <button type="button" className="itp-icon-button" onClick={toggleTopView} aria-label="위에서 보기" title={topView ? "기본 각도로 돌아가기" : "위에서 보기"} aria-pressed={topView}>
-            <TopViewIcon />
-          </button>
-          <span className="itp-bottom-note">드래그하여 둘러보기</span>
-        </div>}
         {members.length > 0 && (
-          <div className="itp-dock" role="group" aria-label="팀원 선택">
+          <div className="itp-dock itp-member-list" role="group" aria-label="팀원 선택">
+            <div className="itp-member-list-heading"><span>팀원</span><span>{members.length}</span></div>
             {members.map((item) => (
               <button type="button" className={`itp-member ${member?.id === item.id ? "is-active" : ""}`} key={item.id}
                 style={{ "--itp-member-color": memberColors[item.color] } as CSSProperties}
@@ -447,11 +432,21 @@ export default function ImmersiveTeamPreview({ workspace }: { workspace?: LiveWo
             ))}
           </div>
         )}
+      </div>}
+      {showTeamControls && <div className={`itp-bottom${availability === "ready" ? " itp-team-reveal" : ""}`}>
+        {availability === "ready" && <div className="itp-orbit-controls" role="group" aria-label="3D 화면 조작">
+          <button type="button" className="itp-icon-button" onClick={toggleTopView} aria-label={topView ? "기본 각도로 돌아가기" : "위에서 보기"} title={topView ? "기본 각도로 돌아가기" : "위에서 보기"} aria-pressed={topView}>
+            <TopViewIcon />
+          </button>
+          <button type="button" className="itp-icon-button" onClick={() => setPaused(!paused)} aria-label={paused ? "애니메이션 재생" : "애니메이션 일시정지"} title={paused ? "애니메이션 재생" : "애니메이션 일시정지"} aria-pressed={paused}>
+            <MotionIcon paused={paused} />
+          </button>
+        </div>}
         {(!workspace || workspace.onInvite) && (
           <button type="button" className="itp-invite-trigger" onClick={openInvite} aria-label="팀원 초대" title="팀원 초대"><Icon name="plus" size={23} /></button>
         )}
       </div>}
-      <button type="button" className="itp-scroll-prompt" onClick={showDashboard}><span>아래로 스크롤</span><Icon name="chevron" size={17} /></button>
+      <button type="button" className="space-navigation-button itp-scroll-prompt" data-direction="down" onClick={showDashboard}><span>대시보드로 가기</span><Icon name="chevrons" size={20} className="space-navigation-arrows" /></button>
     </div>
         </div>
         <div className="itp-scroll-wash" aria-hidden="true" />
